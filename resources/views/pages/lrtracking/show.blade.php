@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('content')
 @include('layouts.breadcrumb',['data' => [
-    ['name' => "Lr Tracking",'url'=> route('lrtracking'),'active' => 'no'],
+    ['name' => "Lr Tracking",'url'=> route('lrtracking.index'),'active' => 'no'],
     ['name' =>$page_title,'url'=> '','active' => 'yes'],
 ]])
 
@@ -12,11 +12,11 @@
           <div class="card">
             <div class="card-header">
               <h3 class="card-title">{{ $page_title }}</h3>
-                @if($lrtracking->status == 1)
+                {{-- @if($lrtracking->status == 1)
                     <a href="#" class="btn btn-success btn-sm float-sm-right">&nbsp;Inserted Record Succefully </a>
                  @else
                     <a href="#" class="btn btn-danger btn-sm float-sm-right">&nbsp;Duplicated Record Inserted </a>
-                 @endif
+                 @endif --}}
             </div>
             <!-- /.card-header -->
             <div class="card-body">

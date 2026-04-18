@@ -3,7 +3,7 @@
 <!-- /.login-logo -->
 <div class="card card-outline card-primary">
    <div class="card-header text-center">
-      <a href="{{ URL::to('login')}}" class="h1"><b>Neo</b>Crm</a>
+      <a href="{{ URL::to('login')}}" class="h1">@php $name = App\models\Setting::first(); @endphp {{$name['name']  }}</a>
    </div>
    <div class="card-body">
       <form method="POST" action="{{ route('login') }}">
@@ -19,7 +19,7 @@
          @endif
 
          <div class="input-group mb-3">
-            <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email"  required autocomplete="email" value="connect@logisticaa.co.in" placeholder="E-Mail Id" autofocus>
+            <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" name="email"  required autocomplete="email" value="" placeholder="E-Mail Id" autofocus>
             <div class="input-group-append">
                <div class="input-group-text">
                   <span class="fas fa-envelope"></span>
@@ -27,7 +27,7 @@
             </div>
          </div>
          <div class="input-group mb-3">
-            <input id="password" type="password"  value="!Meenakshi1" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="current-password">
+            <input id="password" type="password"  value="" class="form-control @error('password') is-invalid @enderror" name="password" placeholder="password" required autocomplete="current-password">
             <div class="input-group-append">
                <div class="input-group-text">
                   <span class="fas fa-lock"></span>
@@ -37,14 +37,14 @@
          <div class="row">
             <!-- /.col -->
             <div class="col-4">
-               <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+               <button type="submit" class="btn float-sm-right btn-primary btn-block ">Sign In</button>
             </div>
             <!-- /.col -->
          </div>
       </form>
       <p class="mb-1">
          {{-- @if (Route::has('password.request')) --}}
-         <a class="btn btn-link" href="#">Forgot password?</a>
+         {{-- <a class="btn btn-link" href="#">Forgot password?</a> --}}
          {{-- @endif --}}
       </p>
    </div>

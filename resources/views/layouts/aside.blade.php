@@ -9,7 +9,7 @@
               {{-- <img src="{{asset('img/user7-128x128.jpg')}}" class="img-circle elevation-2" alt="User Image"> --}}
             </div>
             <div class="info">
-              <a href="#" class="d-block">Logisticaa</a>
+              <a href="#" class="d-block">{{ $set['name'] }}</a>
             </div>
           </div>
           @php
@@ -26,11 +26,48 @@
                     </a>
                 </li>
                 <li class="nav-item menu-open">
+                    <a href="{{ route('vehicle.index') }}" class="nav-link @if(request()->segment(1) == "vehicle") active @endif
+                        @if(request()->segment(1) == "vehicle") active @endif">
+                        <i class="nav-icon fas fa-map"></i>
+                        <p>
+                           Own Vehicle
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item menu-open">
+                    <a href="{{ route('vehicleOther.index') }}" class="nav-link @if(request()->segment(1) == "vehicleOther") active @endif
+                        @if(request()->segment(1) == "vehicleOther") active @endif">
+                        <i class="nav-icon fas fa-map"></i>
+                        <p>
+                           Market Vehicle
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item menu-open">
                     <a href="{{ url('/lrtracking') }}" class="nav-link @if(request()->segment(1) == "lrtracking") active @endif
-                        @if(request()->segment(1) == "tracking_show") active @endif">
+                        @if(request()->segment(1) == "lrtracking") active @endif">
                         <i class="nav-icon fas fa-truck"></i>
                         <p>
                             Lr Tracking
+                        </p>
+                    </a>
+                </li>
+
+                <li class="nav-item menu-open">
+                    <a href="{{ url('/delivered_list') }}" class="nav-link @if(request()->segment(1) == "delivered_list") active @endif
+                        @if(request()->segment(1) == "delivered_list") active @endif">
+                        <i class="nav-icon fas fa-tasks"></i>
+                        <p>
+                            Lr Tracking Finished
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item menu-open">
+                    <a href="{{ url('/weight-correction') }}" class="nav-link @if(request()->segment(1) == "weight-correction") active @endif
+                        @if(request()->segment(1) == "weight-correction") active @endif">
+                        <i class="nav-icon fa fa-weight-hanging"></i>
+                        <p>
+                           Add Weight
                         </p>
                     </a>
                 </li>
@@ -39,6 +76,15 @@
                         <i class="nav-icon fas fa-upload"></i>
                         <p>
                             Epod
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item menu-open">
+                    <a href="{{ url('/settings') }}" class="nav-link @if(request()->segment(1) == "settings") active @endif
+                        @if(request()->segment(1) == "settings") active @endif">
+                        <i class="nav-icon fas fa-cogs"></i>
+                        <p>
+                            Setting
                         </p>
                     </a>
                 </li>

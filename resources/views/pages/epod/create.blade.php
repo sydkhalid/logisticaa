@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('content')
 @include('layouts.breadcrumb',['data' => [
-    ['name' => "Lr Tracking",'url'=> route('lrtracking'),'active' => 'no'],
+    ['name' => "Lr Tracking",'url'=> url('epod'),'active' => 'no'],
     ['name' =>$page_title,'url'=> '','active' => 'yes'],
 ]])
 
@@ -16,7 +16,7 @@
             <!-- /.card-header -->
             <div class="card-body">
                 @if (count($errors) > 0)
-                <div class="alert alert-success alert-dismissible">
+                <div class="alert alert-danger alert-dismissible">
                     <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
                     <ul>
                         @foreach ($errors->all() as $error)
@@ -32,19 +32,19 @@
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label for="lspId">LspId</label>
-                                    <input value="0097457655" type="text" id="lspId" name ="lspId" class="form-control" placeholder="lspId">
+                                    <input value="0097457655" type="text" id="lspId" name ="lspId" class="form-control" placeholder="lspId" readonly>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label for="lrNumber">Lr Number</label>
-                                    <input value="7059" type="text" id="lrNumber" name ="lrNumber" class="form-control" placeholder="lrNumber">
+                                    <input value="" type="text" id="lrNumber" name ="lrNumber" class="form-control" placeholder="lrNumber">
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-group">
-                                    <label for="lrNumber">Upload Epod</label>
-                                    <input type="File" id="epod" name ="epod" class="form-control">
+                                    <label for="lrNumber">Upload Epod(jpg,jpeg,pdf)</label>
+                                    <input type="File" id="epod" name ="epod" class="form-control" accept=".jpg, .jpeg , .pdf" />
                                 </div>
                             </div>
 
@@ -53,7 +53,7 @@
                                     <button type="submit" id="btnSubmit" class="btn  bg-gradient-success btn-sm"><i
                                                 class="fa fa-save"></i>&nbsp;Save
                                     </button>
-                                    <a href="{{ route('lrtracking') }}" class="btn  bg-gradient-danger btn-sm"><i
+                                    <a href="{{ url('epod') }}" class="btn  bg-gradient-danger btn-sm"><i
                                                 class="fa fa-times"></i>&nbsp; Cancel</a>
                                 </div>
                             </div>

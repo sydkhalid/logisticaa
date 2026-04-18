@@ -1,8 +1,16 @@
 <?php
 
+use App\Http\Controllers\Admin\App\SettingsController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\LrtrackingController;
+use App\Http\Controllers\SettingController;
+use App\Http\Controllers\TrackController;
+use App\Http\Controllers\VehicleotherController;
+use App\Http\Controllers\WeightController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -18,25 +26,30 @@ Route::get('/', [AuthController::class, 'index'])->name('index');
 Route::get('/login', [AuthController::class, 'index'])->name('index');
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 
-
-Route::get('/register', function () {
-    return view('pages.register');
-});
-
-
 Route::group(['middleware' => ['auth']], function () {
     //home
+      abort(503, 'Application update required');
     Route::get('/home', [HomeController::class, 'index'])->name('home');
-    //tracking LR
-    Route::get('lrtracking',[HomeController::class, 'lrtracking'])->name('lrtracking');
-    Route::get('lrtracking/add_lrtracking',[HomeController::class, 'add_lrtracking'])->name('add_lrtracking');
-    Route::get('showlrtracking/{id$}',[HomeController::class, 'showlrtracking'])->name('showlrtracking');
-    Route::post('ltrtracking_upload', [HomeController::class, 'ltrtracking_upload'])->name('ltrtracking_upload');
+    // vehicle
+    Route::resource('vehicle', VehicleController::class);
+    Route::resource('vehicleOther', VehicleotherController::class);
+    Route::post('fetch_vehicles', [VehicleController::class, 'fetch_vehicles'])->name('fetch_vehicles');
+    Route::get('vehicleStopTrack/{id}', [VehicleotherController::class, 'vehicleStopTrack'])->name('vehicleStopTrack');
+    Route::get('vehiclecheckTrack/{id}', [VehicleotherController::class, 'vehiclecheckTrack'])->name('vehiclecheckTrack');
 
-    Route::get('tracking_show/{id}',[HomeController::class, 'showlrtracking'])->name('showlrtracking');
+    //tracking LR
+    Route::resource('lrtracking', LrtrackingController::class);
+    Route::get('delivered_list',[LrtrackingController::class, 'delivered_list'])->name('delivered_list');
+    Route::get('lrtracking_again/{vehicle_no}/{lrnumber}', [TrackController::class, 'getsinglelrtracking'])->name('getsinglelrtracking');
     Route::get('/epod',[HomeController::class, 'epod'])->name('epod');
     Route::get('epod/add_epod',[HomeController::class, 'add_epod'])->name('add_epod');
     Route::post('epod/epod_upload', [HomeController::class, 'epod_upload'])->name('epod_upload');
+    //weight correction
+    Route::resource('weight-correction', WeightController::class);
+    Route::post('fetchlr', [WeightController::class, 'fetchlr'])->name('fetchlr');
     //logout
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+    //settings
+    Route::resource('settings', SettingController::class);
+    Route::post('settings/save', 'Admin\App\SettingsController@save');
 });

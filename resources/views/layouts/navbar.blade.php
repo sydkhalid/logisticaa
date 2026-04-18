@@ -1,6 +1,6 @@
 <!-- Preloader -->
 <div class="preloader flex-column justify-content-center align-items-center">
-    <h2>Logisticaa</h2>
+    <h2>{{ $set['name'] }}</h2>
   </div>
 
 <!-- Navbar -->

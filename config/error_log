@@ -1,0 +1,8 @@
+[08-Oct-2024 22:34:40 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home/logistic/public_html/config/database.php:18
+Stack trace:
+#0 {main}
+  thrown in /home/logistic/public_html/config/database.php on line 18
+[07-Dec-2024 14:53:52 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function env() in /home/logistic/public_html/config/database.php:18
+Stack trace:
+#0 {main}
+  thrown in /home/logistic/public_html/config/database.php on line 18

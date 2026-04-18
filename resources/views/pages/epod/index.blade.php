@@ -15,6 +15,16 @@
             </div>
             <!-- /.card-header -->
             <div class="card-body">
+                @if (count($errors) > 0)
+                <div class="alert alert-danger alert-dismissible">
+                    <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+                    <ul>
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+                @endif
               <table id="user-table" class="table table-bordered table-striped">
                 <thead>
                 <tr>
@@ -22,16 +32,16 @@
                     <th>Lr Number</th>
                     <th>Status</th>
                     <th>Created At</th>
-                    <th>Action</th>
                 </tr>
                 </thead>
                 <tbody>
                     @foreach ($epod as $epods)
+                    <tr>
                         <td>{{ $epods->lspId }}</td>
                         <td>{{ $epods->lrNumber }}</td>
-                        <td>{{ $epods->status }}</td>
+                        <td>@if($epods->status == 1 ) Success @endif</td>
                         <td>{{ $epods->created_at }}</td>
-                        <td>{{ $epods->status }}</td>
+                        </tr>
                     @endforeach
                 </tbody>
               </table>

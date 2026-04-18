@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Providers\RouteServiceProvider;
 use Symfony\Component\HttpFoundation\Request;
 use Validator;
@@ -40,6 +41,8 @@ class AuthController extends Controller
     {
         $this->middleware('guest')->except('logout');
         $this->log_title = "Login";
+        $this->data['set'] = $this->setting();
+        $this->setting = Setting::first();
     }
 
     /**
@@ -71,7 +74,7 @@ class AuthController extends Controller
                 ->withInput()
                 ->withErrors($validator);
         }
-        // try {
+     //   try {
         if (\Auth::once(['email' => $request->email, 'password' => $request->password])) {
 
                     $headers = [
@@ -86,7 +89,7 @@ class AuthController extends Controller
                         ],
                     ];
                     // dd(json_encode($send_data));
-                $client = new Client(['base_uri' => 'http://trackingapi-dev.bosch-travis.com/']);
+                $client = new Client(['base_uri' => $this->setting['bocsh_link'] , 'verify' => false]);
                 $response = $client->request('POST', '/api/auth/login',
                 [
                         'headers' => $headers,
@@ -117,13 +120,14 @@ class AuthController extends Controller
                     ->with('message', trans('auth.failed'))
                     ->with('msg_type', 'warning');
             }
-        // } catch (\Exception $e) {
-        //     crmlogger('danger', 'Error In Login', "Exception : " . $e->getMessage(), $request->all());
-        //     return back()->with([
-        //         'message' => "Try again.",
-        //         'message_type' => "danger",
-        //     ]);
-        // }
+      //  } catch (\Exception $e) {
+    //         return redirect()
+  //                  ->back()
+//                //    ->withErrors(['login' => 'Token Failed'])
+              //      ->withInput()
+            //        ->with('message', 'Token Failed')
+          //          ->with('msg_type', 'warning');
+        //}
     }
 
 
