@@ -94,6 +94,7 @@
               return response.json();
             })
             .then(function (payload) {
+              document.getElementById('lspId').value = payload.lspId || document.getElementById('lspId').value;
               document.getElementById('actualWeight').value = payload.actualWeight || '';
               document.getElementById('length').value = payload.length || '';
               document.getElementById('breadth').value = payload.breadth || '';

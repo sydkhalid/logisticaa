@@ -16,7 +16,7 @@
 
           <form method="POST" action="{{ route('v2.settings.update') }}" class="forms-sample">
             @csrf
-            <input type="hidden" name="id" value="{{ $setting->id }}">
+            <input type="hidden" name="id" value="{{ old('id', $setting->id) }}">
 
             <div class="row">
               <div class="col-md-6 form-group">

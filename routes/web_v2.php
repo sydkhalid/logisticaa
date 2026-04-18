@@ -5,6 +5,7 @@ use App\Http\Controllers\V2\DashboardController;
 use App\Http\Controllers\V2\EpodController;
 use App\Http\Controllers\V2\LrTrackingController;
 use App\Http\Controllers\V2\MarketVehicleController;
+use App\Http\Controllers\V2\ReportController;
 use App\Http\Controllers\V2\SettingController;
 use App\Http\Controllers\V2\VehicleController;
 use App\Http\Controllers\V2\WeightCorrectionController;
@@ -75,6 +76,11 @@ $router->prefix('v2')->name('v2.')->group(function () use ($router) {
             $router->get('/', [EpodController::class, 'index'])->name('index');
             $router->get('/create', [EpodController::class, 'create'])->name('create');
             $router->post('/', [EpodController::class, 'store'])->name('store');
+        });
+
+        $router->prefix('reports')->name('reports.')->group(function () use ($router) {
+            $router->get('/', [ReportController::class, 'index'])->name('index');
+            $router->get('/export/{dataset}', [ReportController::class, 'export'])->name('export');
         });
 
         $router->get('/settings', [SettingController::class, 'edit'])->name('settings.edit');

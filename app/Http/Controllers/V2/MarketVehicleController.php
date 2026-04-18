@@ -71,12 +71,20 @@ class MarketVehicleController extends BaseController
 
     public function show(Vehicle $vehicle)
     {
-        $details = $this->integrations->findFleetVehicle($vehicle->vehicleNo, auth()->user());
+        $details = null;
+        $warning = null;
+
+        try {
+            $details = $this->integrations->findFleetVehicle($vehicle->vehicleNo, auth()->user());
+        } catch (\Throwable $exception) {
+            $warning = $exception->getMessage();
+        }
 
         return $this->render('market-vehicles.show', [
             'pageTitle' => 'Market Vehicle Details',
             'vehicle' => $vehicle,
             'details' => $details,
+            'warning' => $warning,
         ]);
     }
 
@@ -140,6 +148,12 @@ class MarketVehicleController extends BaseController
 
     public function stopTracking(Request $request, Vehicle $vehicle)
     {
+        if ((int) $vehicle->statusStop === 1) {
+            return back()
+                ->with('message', 'SIM tracking is already stopped for this vehicle.')
+                ->with('message_type', 'warning');
+        }
+
         try {
             $this->integrations->stopSimTracking($vehicle->mobileNo, $vehicle->simProvider, $request->user());
         } catch (\Throwable $exception) {

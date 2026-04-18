@@ -20,7 +20,7 @@
             <div><span>Expiry</span><strong>{{ $vehicle->expireDate }}</strong></div>
             <div><span>Fleet Vehicle ID</span><strong>{{ $details['vehicleId'] ?? 'N/A' }}</strong></div>
             <div><span>Driver Name</span><strong>{{ $details['driverName'] ?? 'N/A' }}</strong></div>
-            <div><span>Status</span><strong>{{ $details['status'] ?? 'N/A' }}</strong></div>
+            <div><span>Status</span><strong>{{ $details['currentStatus'] ?? ($details['status'] ?? 'N/A') }}</strong></div>
             <div><span>Vehicle Type</span><strong>{{ $details['vehicleTypeValue'] ?? 'N/A' }}</strong></div>
             <div><span>Speed</span><strong>{{ $details['speed'] ?? 'N/A' }}</strong></div>
             <div><span>Latitude</span><strong>{{ $details['latitude'] ?? 'N/A' }}</strong></div>
@@ -31,6 +31,9 @@
             <span class="text-muted d-block mb-2">Address</span>
             <p class="mb-0">{{ $details['address'] ?? 'Live FleetX address not available.' }}</p>
           </div>
+          @if (!empty($warning))
+            <div class="alert alert-warning mt-3 mb-0">{{ $warning }}</div>
+          @endif
         </div>
       </div>
     </div>

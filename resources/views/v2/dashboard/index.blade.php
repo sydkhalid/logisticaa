@@ -47,7 +47,7 @@
             <div class="card-body">
               <p class="mb-4">Completed LR</p>
               <p class="fs-30 mb-2">{{ $stats['completedTrackingCount'] }}</p>
-              <p>Delivered shipments</p>
+              <p>Delivered and EPOD-synced shipments</p>
             </div>
           </div>
         </div>
@@ -100,6 +100,7 @@
             <a href="{{ route('v2.lr-trackings.create') }}" class="btn btn-outline-success btn-fw">Create LR Tracking</a>
             <a href="{{ route('v2.weight-corrections.create') }}" class="btn btn-outline-warning btn-fw">Add Weight Correction</a>
             <a href="{{ route('v2.epods.create') }}" class="btn btn-outline-danger btn-fw">Upload EPOD</a>
+            <a href="{{ route('v2.reports.index') }}" class="btn btn-outline-dark btn-fw">Open Reports</a>
           </div>
         </div>
       </div>
@@ -130,8 +131,8 @@
                     <td>{{ $tracking->vehicleNo }}</td>
                     <td>{{ $tracking->lrNumber }}</td>
                     <td>
-                      <span class="badge badge-{{ (int) $tracking->status === 1 ? 'success' : 'warning' }}">
-                        {{ $tracking->lrStatus }}
+                      <span class="badge badge-{{ in_array((int) $tracking->status, [1, 3], true) ? 'success' : 'warning' }}">
+                        {{ (int) $tracking->status === 3 ? 'EPOD Uploaded' : $tracking->lrStatus }}
                       </span>
                     </td>
                     <td>{{ $tracking->updated_at }}</td>

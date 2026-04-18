@@ -14,7 +14,7 @@ abstract class BaseController extends Controller
     public function __construct(ExternalLogisticsService $integrations)
     {
         $this->integrations = $integrations;
-        $this->settings = $this->integrations->getSettings();
+        $this->settings = $this->integrations->getSettings() ?: new Setting();
     }
 
     protected function render(string $view, array $data = [])

@@ -20,6 +20,47 @@ class ExternalLogisticsService
     private const FLEET_PASSWORD = 'sPQe45lW';
     private const SYSTEM_EMAIL = 'connect@logisticaa.co.in';
     private const SYSTEM_PASSWORD = '!Meenakshi1';
+    private const DEFAULT_TIMEOUT = 20;
+    private const DEFAULT_CONNECT_TIMEOUT = 10;
+
+    public static function lrStatuses(): array
+    {
+        return [
+            'Shipment In Transit',
+            'Hub-Delivered',
+            'Out-For-Delivery',
+            'Delay',
+            'Customer Appointment Delivery',
+            'Shipment Delivered',
+        ];
+    }
+
+    public static function truckTypes(): array
+    {
+        return ['LTL', 'FTL'];
+    }
+
+    public static function truckTonnages(): array
+    {
+        return [
+            '1 E',
+            '1 T',
+            '2 E',
+            '2.5 E',
+            '2.5 T',
+            '3.5 T',
+            '3.5 E',
+            '5.5 T',
+            '9 E',
+            '9 T Single axle',
+            '9 T Multi axle',
+            '14 T',
+            '16 T',
+            '18 T',
+            '22 T',
+            '28 T',
+        ];
+    }
 
     public function getSettings(): ?Setting
     {
@@ -59,8 +100,8 @@ class ExternalLogisticsService
     public function syncSystemBocshToken(): ?string
     {
         $systemUser = User::query()->first();
-        $email = $systemUser ? $systemUser->email : self::SYSTEM_EMAIL;
-        $response = $this->loginToBocsh($email, self::SYSTEM_PASSWORD);
+        $email = env('TRAVIS_SYSTEM_EMAIL', $systemUser ? $systemUser->email : self::SYSTEM_EMAIL);
+        $response = $this->loginToBocsh($email, env('TRAVIS_SYSTEM_PASSWORD', self::SYSTEM_PASSWORD));
         $token = $response['token'] ?? null;
 
         if ($token && $systemUser) {
@@ -83,8 +124,8 @@ class ExternalLogisticsService
                 'Authorization' => self::FLEET_BASIC_AUTH,
             ],
             'form_params' => [
-                'username' => self::FLEET_USERNAME,
-                'password' => self::FLEET_PASSWORD,
+                'username' => env('FLEETX_API_USERNAME', self::FLEET_USERNAME),
+                'password' => env('FLEETX_API_PASSWORD', self::FLEET_PASSWORD),
                 'grant_type' => 'password',
             ],
         ], false);
@@ -155,7 +196,9 @@ class ExternalLogisticsService
 
         $client = new Client([
             'base_uri' => $this->normalizeBaseUri($settings->tracing_link),
-            'verify' => false,
+            'verify' => $this->verifyTls(),
+            'timeout' => self::DEFAULT_TIMEOUT,
+            'connect_timeout' => self::DEFAULT_CONNECT_TIMEOUT,
         ]);
 
         $response = $client->request('GET', 'currentLoc?accessToken=' . $settings->address);
@@ -216,31 +259,9 @@ class ExternalLogisticsService
             }
         }
 
-        return $this->bocshRequest('POST', '/api/lr/tracking', [
-            'lrTrackingDetails' => [
-                'lspId' => $tracking->lspId,
-                'lrNumber' => $tracking->lrNumber,
-                'lrStatus' => $tracking->lrStatus,
-                'latitude' => $tracking->latitude,
-                'longitude' => $tracking->longitude,
-                'location' => $tracking->location,
-                'pickUpDate' => $tracking->pickUpDate,
-                'lrDate' => $tracking->lrDate,
-                'actualDeliveredDate' => $tracking->actualDeliveredDate,
-                'edd' => $tracking->edd,
-                'receiverName' => $tracking->receiverName,
-                'deliveredToPerson' => $tracking->deliveredToPerson,
-                'actualWeight' => $tracking->actualWeight,
-                'numberOfPackages' => $tracking->numberOfPackages,
-                'length' => $tracking->length,
-                'breadth' => $tracking->breadth,
-                'height' => $tracking->height,
-                'truckType' => $tracking->truckType,
-                'truckTonnage' => $tracking->truckTonnage,
-                'vehicleNo' => $tracking->vehicleNo,
-                'deliveryNotes' => $tracking->deliveryNotes,
-            ],
-        ], $user);
+        $response = $this->bocshRequest('POST', '/api/lr/tracking', $this->trackingPayload($tracking), $user);
+
+        return $this->ensureBocshSuccess($response, 'Tracking sync failed.', 'insertFlag');
     }
 
     public function syncWeightCorrection(Weight $weight, bool $recorrection = false, ?User $user = null): array
@@ -249,24 +270,43 @@ class ExternalLogisticsService
             ? '/api/ilsp/weight-recorrection'
             : '/api/ilsp/weight-correction';
 
-        return $this->bocshRequest('POST', $endpoint, [
+        $response = $this->bocshRequest('POST', $endpoint, [
             'lrNumber' => $weight->lrNumber,
             'lspId' => $weight->lspId,
             'correctedWeight' => $weight->correctedWeight,
-            'numberOfPackages' => $weight->numberOfPackages ?? null,
-            'length' => $weight->length,
-            'breadth' => $weight->breadth,
-            'height' => $weight->height,
+            'length' => $this->normalizeDecimal($weight->length),
+            'breadth' => $this->normalizeDecimal($weight->breadth),
+            'height' => $this->normalizeDecimal($weight->height),
         ], $user);
+
+        return $this->ensureBocshSuccess($response, $recorrection ? 'Weight re-correction failed.' : 'Weight correction failed.');
     }
 
     public function uploadEpod(Epod $epod, string $base64File, ?User $user = null): array
     {
-        return $this->bocshRequest('POST', '/api/lr/epod', [
+        $response = $this->bocshRequest('POST', '/api/lr/epod', [
             'lspId' => $epod->lspId,
             'lrNumber' => $epod->lrNumber,
             'epod' => $base64File,
         ], $user);
+
+        return $this->ensureBocshSuccess($response, 'EPOD upload failed.', 'uploadFlag');
+    }
+
+    public function reuploadEpod(Epod $epod, string $base64File, ?User $user = null): array
+    {
+        $response = $this->bocshRequest('POST', '/api/lr/epod-reupload', [
+            'lspId' => $epod->lspId,
+            'lrNumber' => $epod->lrNumber,
+            'epod' => $base64File,
+        ], $user);
+
+        return $this->ensureBocshSuccess($response, 'EPOD re-upload failed.', 'uploadFlag');
+    }
+
+    public function loginSucceeded(array $response): bool
+    {
+        return $this->isTruthy($response['success'] ?? true) && !empty($response['token']);
     }
 
     private function getBocshToken(?User $user = null): ?string
@@ -316,7 +356,9 @@ class ExternalLogisticsService
 
         $client = new Client([
             'base_uri' => $this->normalizeBaseUri($settings->flee_link),
-            'verify' => false,
+            'verify' => $this->verifyTls(),
+            'timeout' => self::DEFAULT_TIMEOUT,
+            'connect_timeout' => self::DEFAULT_CONNECT_TIMEOUT,
         ]);
 
         if ($authenticate) {
@@ -364,7 +406,9 @@ class ExternalLogisticsService
 
         $client = new Client([
             'base_uri' => $this->normalizeBaseUri($settings->bocsh_link),
-            'verify' => false,
+            'verify' => $this->verifyTls(),
+            'timeout' => self::DEFAULT_TIMEOUT,
+            'connect_timeout' => self::DEFAULT_CONNECT_TIMEOUT,
         ]);
 
         $options = [
@@ -421,5 +465,141 @@ class ExternalLogisticsService
     private function normalizeBaseUri(string $uri): string
     {
         return rtrim($uri, '/') . '/';
+    }
+
+    private function trackingPayload(Tracking $tracking): array
+    {
+        $payload = [
+            'lrTrackingDetails' => [
+                'lspId' => $this->nullableString($tracking->lspId),
+                'lrNumber' => $this->nullableString($tracking->lrNumber),
+                'lrStatus' => $this->nullableString($tracking->lrStatus),
+                'latitude' => $this->nullableString($tracking->latitude),
+                'longitude' => $this->nullableString($tracking->longitude),
+                'location' => $this->nullableString($tracking->location),
+                'pickUpDate' => $this->nullableString($tracking->pickUpDate),
+                'lrDate' => $this->nullableString($tracking->lrDate),
+                'actualDeliveredDate' => $tracking->lrStatus === 'Shipment Delivered'
+                    ? $this->nullableString($tracking->actualDeliveredDate)
+                    : '',
+                'edd' => $this->nullableString($tracking->edd),
+                'receiverName' => $this->nullableString($tracking->receiverName),
+                'deliveredToPerson' => $this->nullableString($tracking->deliveredToPerson),
+                'actualWeight' => $this->nullableString($tracking->actualWeight),
+                'numberOfPackages' => $this->nullableString($tracking->numberOfPackages),
+                'length' => $this->normalizeDecimal($tracking->length),
+                'breadth' => $this->normalizeDecimal($tracking->breadth),
+                'height' => $this->normalizeDecimal($tracking->height),
+                'truckType' => $this->nullableString($tracking->truckType),
+                'truckTonnage' => $this->nullableString($tracking->truckTonnage),
+                'vehicleNo' => $this->nullableString($tracking->vehicleNo),
+                'deliveryNotes' => $this->nullableString($tracking->deliveryNotes),
+            ],
+        ];
+
+        $this->validateTrackingPayload($payload['lrTrackingDetails']);
+
+        return $payload;
+    }
+
+    private function validateTrackingPayload(array $payload): void
+    {
+        $requiredFields = [
+            'lspId' => 'LSP ID',
+            'lrNumber' => 'LR Number',
+            'lrStatus' => 'LR Status',
+            'location' => 'Location',
+            'edd' => 'EDD',
+            'actualWeight' => 'Actual Weight',
+            'numberOfPackages' => 'Number Of Packages',
+            'length' => 'Length',
+            'breadth' => 'Breadth',
+            'height' => 'Height',
+            'truckType' => 'Truck Type',
+            'truckTonnage' => 'Truck Tonnage',
+            'vehicleNo' => 'Vehicle Number',
+        ];
+
+        foreach ($requiredFields as $field => $label) {
+            if (!isset($payload[$field]) || $payload[$field] === '') {
+                throw new RuntimeException($label . ' is required by the Travis LR tracking API.');
+            }
+        }
+
+        if (!in_array($payload['lrStatus'], self::lrStatuses(), true)) {
+            throw new RuntimeException('LR Status is not valid for the Travis LR tracking API.');
+        }
+
+        if (!in_array($payload['truckType'], self::truckTypes(), true)) {
+            throw new RuntimeException('Truck Type must be one of the Travis-supported values.');
+        }
+
+        if (!in_array($payload['truckTonnage'], self::truckTonnages(), true)) {
+            throw new RuntimeException('Truck Tonnage must match the Travis-supported list.');
+        }
+
+        if ($payload['lrStatus'] === 'Shipment Delivered' && empty($payload['actualDeliveredDate'])) {
+            throw new RuntimeException('Actual Delivered Date is required when LR Status is Shipment Delivered.');
+        }
+    }
+
+    private function ensureBocshSuccess(array $response, string $fallback, ?string $flagKey = null): array
+    {
+        if (empty($response)) {
+            throw new RuntimeException($fallback);
+        }
+
+        $success = !array_key_exists('success', $response) || $this->isTruthy($response['success']);
+        $flagOkay = true;
+
+        if ($flagKey && array_key_exists($flagKey, $response)) {
+            $flagOkay = $this->isTruthy($response[$flagKey]);
+        }
+
+        if (!$success || !$flagOkay) {
+            throw new RuntimeException($response['message'] ?? $fallback);
+        }
+
+        return $response;
+    }
+
+    private function normalizeDecimal($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return number_format((float) $value, 3, '.', '');
+    }
+
+    private function nullableString($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $string = trim((string) $value);
+
+        return $string === '' ? null : $string;
+    }
+
+    private function isTruthy($value): bool
+    {
+        if (is_bool($value) || is_int($value)) {
+            return $value === true || $value === 1;
+        }
+
+        if (is_string($value)) {
+            $normalized = strtolower(trim($value));
+
+            return $normalized === 'true' || preg_match('/^1(\b|[^0-9])/', $normalized) === 1;
+        }
+
+        return false;
+    }
+
+    private function verifyTls(): bool
+    {
+        return filter_var(env('TRAVIS_VERIFY_TLS', false), FILTER_VALIDATE_BOOLEAN);
     }
 }

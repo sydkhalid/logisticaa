@@ -55,6 +55,12 @@
       </a>
     </li>
     <li class="nav-item">
+      <a class="nav-link {{ request()->routeIs('v2.reports.*') ? 'active' : '' }}" href="{{ route('v2.reports.index') }}">
+        <i class="icon-pie-graph menu-icon"></i>
+        <span class="menu-title">Reports</span>
+      </a>
+    </li>
+    <li class="nav-item">
       <a class="nav-link {{ request()->routeIs('v2.settings.*') ? 'active' : '' }}" href="{{ route('v2.settings.edit') }}">
         <i class="icon-head menu-icon"></i>
         <span class="menu-title">Settings</span>

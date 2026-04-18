@@ -42,7 +42,7 @@ class AuthController extends BaseController
 
         try {
             $bocsh = $this->integrations->loginToBocsh($credentials['email'], $credentials['password']);
-            if (($bocsh['message'] ?? null) !== 'Token is valid for 1 hour' || empty($bocsh['token'])) {
+            if (!$this->integrations->loginSucceeded($bocsh)) {
                 throw new RuntimeException($bocsh['message'] ?? 'Unable to authenticate with BOCSH.');
             }
 

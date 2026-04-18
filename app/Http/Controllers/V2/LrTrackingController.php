@@ -4,8 +4,10 @@ namespace App\Http\Controllers\V2;
 
 use App\Models\Tracking;
 use App\Models\Vehicle;
+use App\Services\V2\ExternalLogisticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 
 class LrTrackingController extends BaseController
 {
@@ -32,7 +34,7 @@ class LrTrackingController extends BaseController
         return $this->render('lr-trackings.index', [
             'pageTitle' => 'Completed LR Tracking',
             'trackings' => Tracking::query()
-                ->where('status', '1')
+                ->whereIn('status', [1, 3])
                 ->latest('id')
                 ->get(),
             'showCompleted' => true,
@@ -45,6 +47,9 @@ class LrTrackingController extends BaseController
             'pageTitle' => 'Create LR Tracking',
             'tracking' => new Tracking(),
             'vehicles' => Vehicle::query()->orderBy('vehicleNo')->get(),
+            'lrStatuses' => array_values(array_diff(ExternalLogisticsService::lrStatuses(), ['Shipment Delivered'])),
+            'truckTypes' => ExternalLogisticsService::truckTypes(),
+            'truckTonnages' => ExternalLogisticsService::truckTonnages(),
             'formAction' => route('v2.lr-trackings.store'),
             'formMethod' => 'POST',
         ]);
@@ -56,19 +61,19 @@ class LrTrackingController extends BaseController
             'vehicle_id' => ['required', 'exists:vehicles,id'],
             'lspId' => ['required', 'string'],
             'lrNumber' => ['required', 'string'],
-            'lrStatus' => ['required', 'string'],
+            'lrStatus' => ['required', 'string', Rule::in(array_values(array_diff(ExternalLogisticsService::lrStatuses(), ['Shipment Delivered'])))],
             'pickUpDate' => ['nullable', 'date'],
             'lrDate' => ['nullable', 'date'],
-            'edd' => ['nullable', 'date'],
+            'edd' => ['required', 'date'],
             'receiverName' => ['nullable', 'string'],
             'deliveredToPerson' => ['nullable', 'string'],
-            'actualWeight' => ['nullable'],
-            'numberOfPackages' => ['nullable'],
-            'length' => ['nullable'],
-            'breadth' => ['nullable'],
-            'height' => ['nullable'],
-            'truckType' => ['nullable', 'string'],
-            'truckTonnage' => ['nullable', 'string'],
+            'actualWeight' => ['required', 'numeric', 'min:0'],
+            'numberOfPackages' => ['required', 'numeric', 'min:1'],
+            'length' => ['required', 'numeric', 'min:0'],
+            'breadth' => ['required', 'numeric', 'min:0'],
+            'height' => ['required', 'numeric', 'min:0'],
+            'truckType' => ['required', 'string', Rule::in(ExternalLogisticsService::truckTypes())],
+            'truckTonnage' => ['required', 'string', Rule::in(ExternalLogisticsService::truckTonnages())],
             'deliveryNotes' => ['nullable', 'string'],
         ]);
 
@@ -143,6 +148,7 @@ class LrTrackingController extends BaseController
         return $this->render('lr-trackings.edit', [
             'pageTitle' => 'Update LR Status',
             'tracking' => $tracking,
+            'lrStatuses' => ExternalLogisticsService::lrStatuses(),
             'formAction' => route('v2.lr-trackings.update', $tracking),
         ]);
     }
@@ -150,8 +156,8 @@ class LrTrackingController extends BaseController
     public function update(Request $request, Tracking $tracking)
     {
         $validated = $request->validate([
-            'lrStatus' => ['required', 'string'],
-            'actualDeliveredDate' => ['nullable', 'date'],
+            'lrStatus' => ['required', 'string', Rule::in(ExternalLogisticsService::lrStatuses())],
+            'actualDeliveredDate' => ['nullable', 'date', 'required_if:lrStatus,Shipment Delivered'],
         ]);
 
         $tracking->lrStatus = $validated['lrStatus'];
@@ -159,6 +165,9 @@ class LrTrackingController extends BaseController
         if ($validated['lrStatus'] === 'Shipment Delivered') {
             $tracking->actualDeliveredDate = $this->formatDateTime($validated['actualDeliveredDate'] ?? null);
             $tracking->status = 1;
+        } else {
+            $tracking->actualDeliveredDate = null;
+            $tracking->status = 0;
         }
 
         $tracking->save();
@@ -172,7 +181,7 @@ class LrTrackingController extends BaseController
             $messageType = 'warning';
         }
 
-        return redirect()->route('v2.lr-trackings.index')
+        return redirect()->route((int) $tracking->status === 1 ? 'v2.lr-trackings.completed' : 'v2.lr-trackings.index')
             ->with('message', $message)
             ->with('message_type', $messageType);
     }
@@ -206,7 +215,21 @@ class LrTrackingController extends BaseController
             ]);
         }
 
-        $details = $this->integrations->findFleetVehicle($vehicle->vehicleNo, $request->user());
+        if ((int) $vehicle->statusStop === 1) {
+            return response()->json([
+                'approved' => false,
+                'message' => 'SIM tracking is stopped for this market vehicle.',
+            ]);
+        }
+
+        try {
+            $details = $this->integrations->findFleetVehicle($vehicle->vehicleNo, $request->user());
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'approved' => false,
+                'message' => $exception->getMessage(),
+            ], 503);
+        }
 
         return response()->json([
             'approved' => (bool) $details,

@@ -29,6 +29,11 @@ class EpodController extends BaseController
     {
         return $this->render('epods.form', [
             'pageTitle' => 'Upload EPOD',
+            'recentTrackings' => Tracking::query()
+                ->whereIn('status', [1, 3])
+                ->latest('id')
+                ->limit(20)
+                ->get(['lrNumber', 'lspId']),
         ]);
     }
 
@@ -37,8 +42,20 @@ class EpodController extends BaseController
         $validated = $request->validate([
             'lspId' => ['required', 'string'],
             'lrNumber' => ['required', 'string'],
-            'epod' => ['required', 'file', 'mimes:pdf,jpg,jpeg', 'max:2048'],
+            'epod' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:2048'],
         ]);
+
+        $trackingExists = Tracking::query()
+            ->where('lspId', $validated['lspId'])
+            ->where('lrNumber', $validated['lrNumber'])
+            ->exists();
+
+        if (!$trackingExists) {
+            return back()
+                ->withInput($request->only('lspId', 'lrNumber'))
+                ->with('message', 'Create the LR tracking before uploading EPOD.')
+                ->with('message_type', 'warning');
+        }
 
         $file = $request->file('epod');
         $filename = 'category' . random_int(1, 1000000) . '.' . $file->getClientOriginalExtension();
@@ -50,6 +67,12 @@ class EpodController extends BaseController
 
         Epod::query()->where('status', 0)->delete();
         $file->move($destination, $filename);
+
+        $existingUploadedEpod = Epod::query()
+            ->where('lspId', $validated['lspId'])
+            ->where('lrNumber', $validated['lrNumber'])
+            ->where('status', 1)
+            ->exists();
 
         $epod = new Epod();
         $epod->lspId = $validated['lspId'];
@@ -63,29 +86,26 @@ class EpodController extends BaseController
         $base64 = 'data:' . $mimeType . ';base64,' . base64_encode(file_get_contents($path));
 
         try {
-            $response = $this->integrations->uploadEpod($epod, $base64, $request->user());
+            $existingUploadedEpod
+                ? $this->integrations->reuploadEpod($epod, $base64, $request->user())
+                : $this->integrations->uploadEpod($epod, $base64, $request->user());
         } catch (\Throwable $exception) {
-            return redirect()->route('v2.epods.index')
+            return back()
+                ->withInput($request->only('lspId', 'lrNumber'))
                 ->with('message', $exception->getMessage())
                 ->with('message_type', 'danger');
         }
 
-        if (($response['success'] ?? null) === 'true' && ($response['uploadFlag'] ?? null) !== '0') {
-            $epod->status = 1;
-            $epod->save();
+        $epod->status = 1;
+        $epod->save();
 
-            Tracking::query()
-                ->where('lspId', $validated['lspId'])
-                ->where('lrNumber', $validated['lrNumber'])
-                ->update(['status' => 3]);
-
-            return redirect()->route('v2.epods.index')
-                ->with('message', 'EPOD uploaded successfully.')
-                ->with('message_type', 'success');
-        }
+        Tracking::query()
+            ->where('lspId', $validated['lspId'])
+            ->where('lrNumber', $validated['lrNumber'])
+            ->update(['status' => 3]);
 
         return redirect()->route('v2.epods.index')
-            ->with('message', $response['message'] ?? 'EPOD upload failed.')
-            ->with('message_type', 'warning');
+            ->with('message', $existingUploadedEpod ? 'EPOD re-uploaded successfully.' : 'EPOD uploaded successfully.')
+            ->with('message_type', 'success');
     }
 }

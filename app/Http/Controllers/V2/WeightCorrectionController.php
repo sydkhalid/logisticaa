@@ -38,10 +38,10 @@ class WeightCorrectionController extends BaseController
         $validated = $request->validate([
             'lspId' => ['required', 'string'],
             'lrNumber' => ['required', 'string'],
-            'actualWeight' => ['required'],
-            'length' => ['required'],
-            'breadth' => ['required'],
-            'height' => ['required'],
+            'actualWeight' => ['required', 'numeric', 'min:0'],
+            'length' => ['required', 'numeric', 'min:0'],
+            'breadth' => ['required', 'numeric', 'min:0'],
+            'height' => ['required', 'numeric', 'min:0'],
         ]);
 
         $exists = Weight::query()
@@ -92,10 +92,10 @@ class WeightCorrectionController extends BaseController
     public function update(Request $request, Weight $weight)
     {
         $validated = $request->validate([
-            'actualWeight' => ['required'],
-            'length' => ['required'],
-            'breadth' => ['required'],
-            'height' => ['required'],
+            'actualWeight' => ['required', 'numeric', 'min:0'],
+            'length' => ['required', 'numeric', 'min:0'],
+            'breadth' => ['required', 'numeric', 'min:0'],
+            'height' => ['required', 'numeric', 'min:0'],
         ]);
 
         $weight->correctedWeight = $validated['actualWeight'];
@@ -125,7 +125,7 @@ class WeightCorrectionController extends BaseController
         ]);
 
         $tracking = Tracking::query()
-            ->select('lrNumber', 'actualWeight', 'length', 'breadth', 'height')
+            ->select('lspId', 'lrNumber', 'actualWeight', 'numberOfPackages', 'length', 'breadth', 'height')
             ->where('lrNumber', $validated['lrNumber'])
             ->first();
 

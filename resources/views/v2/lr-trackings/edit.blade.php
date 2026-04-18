@@ -27,7 +27,7 @@
             <div class="form-group">
               <label for="lrStatus">LR Status</label>
               <select class="form-select" id="lrStatus" name="lrStatus" required>
-                @foreach (['Shipment In Transit', 'Hub-Delivered', 'Out-For-Delivery', 'Delay', 'Customer', 'Shipment Delivered'] as $status)
+                @foreach ($lrStatuses as $status)
                   <option value="{{ $status }}" {{ old('lrStatus', $tracking->lrStatus) === $status ? 'selected' : '' }}>{{ $status }}</option>
                 @endforeach
               </select>
@@ -46,4 +46,20 @@
       </div>
     </div>
   </div>
+@endsection
+
+@section('scripts')
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      var statusInput = document.getElementById('lrStatus');
+      var deliveredInput = document.getElementById('actualDeliveredDate');
+
+      function syncDeliveredRequirement() {
+        deliveredInput.required = statusInput.value === 'Shipment Delivered';
+      }
+
+      statusInput.addEventListener('change', syncDeliveredRequirement);
+      syncDeliveredRequirement();
+    });
+  </script>
 @endsection

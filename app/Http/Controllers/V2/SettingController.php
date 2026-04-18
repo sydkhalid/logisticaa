@@ -17,14 +17,14 @@ class SettingController extends BaseController
     {
         return $this->render('settings.edit', [
             'pageTitle' => 'Application Settings',
-            'setting' => Setting::query()->first(),
+            'setting' => Setting::query()->first() ?: new Setting(),
         ]);
     }
 
     public function update(Request $request)
     {
         $validated = $request->validate([
-            'id' => ['required', 'exists:settings,id'],
+            'id' => ['nullable', 'exists:settings,id'],
             'name' => ['nullable', 'string'],
             'copyright' => ['nullable', 'string'],
             'bocsh_link' => ['nullable', 'string'],
@@ -34,16 +34,18 @@ class SettingController extends BaseController
             'access_token' => ['nullable', 'string'],
         ]);
 
-        Setting::query()->where('id', $validated['id'])->update([
-            'name' => $validated['name'] ?? null,
-            'copyright' => $validated['copyright'] ?? null,
-            'bocsh_link' => $validated['bocsh_link'] ?? null,
-            'tracing_link' => $validated['tracing_link'] ?? null,
-            'flee_link' => $validated['flee_link'] ?? null,
-            'address' => $validated['address'] ?? null,
-            'access_token' => $validated['access_token'] ?? null,
-            'updated_at' => date('Y-m-d H:i:s'),
-        ]);
+        $setting = empty($validated['id'])
+            ? (Setting::query()->first() ?: new Setting())
+            : Setting::query()->findOrFail($validated['id']);
+
+        $setting->name = $validated['name'] ?? null;
+        $setting->copyright = $validated['copyright'] ?? null;
+        $setting->bocsh_link = $validated['bocsh_link'] ?? null;
+        $setting->tracing_link = $validated['tracing_link'] ?? null;
+        $setting->flee_link = $validated['flee_link'] ?? null;
+        $setting->address = $validated['address'] ?? null;
+        $setting->access_token = $validated['access_token'] ?? null;
+        $setting->save();
 
         return redirect()->route('v2.settings.edit')
             ->with('message', 'Settings updated successfully.')

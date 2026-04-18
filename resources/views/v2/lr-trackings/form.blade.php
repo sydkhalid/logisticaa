@@ -42,7 +42,7 @@
                 <label for="lrStatus">LR Status</label>
                 <select class="form-select" id="lrStatus" name="lrStatus" required>
                   <option value="">Please choose</option>
-                  @foreach (['Shipment In Transit', 'Hub-Delivered', 'Out-For-Delivery', 'Delay', 'Customer'] as $status)
+                  @foreach ($lrStatuses as $status)
                     <option value="{{ $status }}" {{ old('lrStatus') === $status ? 'selected' : '' }}>{{ $status }}</option>
                   @endforeach
                 </select>
@@ -57,7 +57,7 @@
               </div>
               <div class="col-md-4 form-group">
                 <label for="edd">EDD</label>
-                <input type="datetime-local" class="form-control" id="edd" name="edd" value="{{ old('edd') }}">
+                <input type="datetime-local" class="form-control" id="edd" name="edd" value="{{ old('edd') }}" required>
               </div>
               <div class="col-md-4 form-group">
                 <label for="receiverName">Receiver Name</label>
@@ -69,38 +69,38 @@
               </div>
               <div class="col-md-4 form-group">
                 <label for="actualWeight">Actual Weight</label>
-                <input type="number" step="any" class="form-control" id="actualWeight" name="actualWeight" value="{{ old('actualWeight') }}">
+                <input type="number" step="any" class="form-control" id="actualWeight" name="actualWeight" value="{{ old('actualWeight') }}" required>
               </div>
               <div class="col-md-4 form-group">
                 <label for="numberOfPackages">Number Of Packages</label>
-                <input type="number" step="1" class="form-control" id="numberOfPackages" name="numberOfPackages" value="{{ old('numberOfPackages') }}">
+                <input type="number" step="1" class="form-control" id="numberOfPackages" name="numberOfPackages" value="{{ old('numberOfPackages') }}" required>
               </div>
               <div class="col-md-4 form-group">
                 <label for="length">Length</label>
-                <input type="number" step="any" class="form-control" id="length" name="length" value="{{ old('length') }}">
+                <input type="number" step="any" class="form-control" id="length" name="length" value="{{ old('length') }}" required>
               </div>
               <div class="col-md-4 form-group">
                 <label for="breadth">Breadth</label>
-                <input type="number" step="any" class="form-control" id="breadth" name="breadth" value="{{ old('breadth') }}">
+                <input type="number" step="any" class="form-control" id="breadth" name="breadth" value="{{ old('breadth') }}" required>
               </div>
               <div class="col-md-4 form-group">
                 <label for="height">Height</label>
-                <input type="number" step="any" class="form-control" id="height" name="height" value="{{ old('height') }}">
+                <input type="number" step="any" class="form-control" id="height" name="height" value="{{ old('height') }}" required>
               </div>
               <div class="col-md-4 form-group">
                 <label for="truckType">Truck Type</label>
-                <select class="form-select" id="truckType" name="truckType">
+                <select class="form-select" id="truckType" name="truckType" required>
                   <option value="">Please choose</option>
-                  @foreach (['LTL', 'FTL'] as $type)
+                  @foreach ($truckTypes as $type)
                     <option value="{{ $type }}" {{ old('truckType') === $type ? 'selected' : '' }}>{{ $type }}</option>
                   @endforeach
                 </select>
               </div>
               <div class="col-md-4 form-group">
                 <label for="truckTonnage">Truck Tonnage</label>
-                <select class="form-select" id="truckTonnage" name="truckTonnage">
+                <select class="form-select" id="truckTonnage" name="truckTonnage" required>
                   <option value="">Please choose</option>
-                  @foreach (['1 T', '2.5 T', '3.5 T', '5.5 T', '9 T Single axle', '9 T Multi axle', '16 T', '22 T', '28 T'] as $tonnage)
+                  @foreach ($truckTonnages as $tonnage)
                     <option value="{{ $tonnage }}" {{ old('truckTonnage') === $tonnage ? 'selected' : '' }}>{{ $tonnage }}</option>
                   @endforeach
                 </select>

@@ -21,7 +21,7 @@ class DashboardController extends BaseController
             'stats' => [
                 'vehicleCount' => Vehicle::query()->count(),
                 'activeTrackingCount' => Tracking::query()->where('status', '0')->count(),
-                'completedTrackingCount' => Tracking::query()->where('status', '1')->count(),
+                'completedTrackingCount' => Tracking::query()->whereIn('status', [1, 3])->count(),
                 'epodCount' => Epod::query()->where('status', '1')->count(),
             ],
             'analytics' => $this->integrations->getFleetAnalytics(auth()->user()),

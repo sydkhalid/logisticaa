@@ -43,8 +43,8 @@
                     <td>{{ $tracking->lrNumber }}</td>
                     <td>{{ $tracking->lrDate }}</td>
                     <td>
-                      <span class="badge badge-{{ (int) $tracking->status === 1 ? 'success' : 'warning' }}">
-                        {{ $tracking->lrStatus }}
+                      <span class="badge badge-{{ in_array((int) $tracking->status, [1, 3], true) ? 'success' : 'warning' }}">
+                        {{ $showCompleted && (int) $tracking->status === 3 ? 'EPOD Uploaded' : $tracking->lrStatus }}
                       </span>
                     </td>
                     <td class="text-end">
