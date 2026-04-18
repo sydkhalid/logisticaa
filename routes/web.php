@@ -28,7 +28,6 @@ Route::post('/login', [AuthController::class, 'login'])->name('login');
 
 Route::group(['middleware' => ['auth']], function () {
     //home
-      abort(503, 'Application update required');
     Route::get('/home', [HomeController::class, 'index'])->name('home');
     // vehicle
     Route::resource('vehicle', VehicleController::class);
@@ -53,3 +52,5 @@ Route::group(['middleware' => ['auth']], function () {
     Route::resource('settings', SettingController::class);
     Route::post('settings/save', 'Admin\App\SettingsController@save');
 });
+
+require base_path('routes/web_v2.php');

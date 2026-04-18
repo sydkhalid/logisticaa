@@ -1,0 +1,145 @@
+.brand-copy {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+  letter-spacing: 0.02em;
+}
+
+.nav-chip {
+  background: #eef2ff;
+  border-radius: 999px;
+  color: #4b49ac;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.5rem 0.9rem;
+}
+
+.profile-tile {
+  align-items: center;
+  background: linear-gradient(135deg, #4b49ac, #7da0fa);
+  border-radius: 999px;
+  color: #fff;
+  display: flex;
+  height: 2.25rem;
+  justify-content: center;
+  width: 2.25rem;
+}
+
+.profile-tile__name {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.breadcrumb-custom {
+  background: transparent;
+  padding: 0;
+}
+
+.breadcrumb-custom .breadcrumb-item + .breadcrumb-item::before {
+  color: #a0aec0;
+}
+
+.v2-table th,
+.v2-table td {
+  vertical-align: middle;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detail-grid--wide {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.detail-grid div {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 0.9rem 1rem;
+}
+
+.detail-grid span {
+  color: #6b7280;
+  display: block;
+  font-size: 0.8rem;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+}
+
+.detail-grid strong {
+  color: #111827;
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.map-frame {
+  border: 0;
+  border-radius: 1rem;
+  height: 520px;
+  width: 100%;
+}
+
+.empty-state {
+  align-items: center;
+  background: linear-gradient(135deg, #f8fafc, #eef2ff);
+  border: 1px dashed #cbd5e1;
+  border-radius: 1rem;
+  color: #64748b;
+  display: flex;
+  height: 320px;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.schedule-mini {
+  display: grid;
+  gap: 1rem;
+}
+
+.schedule-item {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.85rem;
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: auto 1fr auto;
+  padding: 0.9rem 1rem;
+}
+
+.schedule-badge {
+  border-radius: 999px;
+  height: 0.85rem;
+  width: 0.85rem;
+}
+
+.table td .badge,
+.table th .badge {
+  font-size: 0.75rem;
+}
+
+.auth .auth-form-light {
+  border-radius: 1.25rem;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+}
+
+@media (max-width: 991.98px) {
+  .brand-copy {
+    display: none;
+  }
+
+  .detail-grid,
+  .detail-grid--wide {
+    grid-template-columns: 1fr;
+  }
+
+  .map-frame {
+    height: 380px;
+  }
+}
