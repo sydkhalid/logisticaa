@@ -18,11 +18,55 @@ class MarketVehicleController extends BaseController
     {
         return $this->render('market-vehicles.index', [
             'pageTitle' => 'Market Vehicles',
-            'vehicles' => Vehicle::query()
-                ->where('vehicleStatus', 1)
-                ->latest('id')
-                ->get(),
         ]);
+    }
+
+    public function data(Request $request)
+    {
+        $query = Vehicle::query()
+            ->select(['id', 'vehicleNo', 'mobileNo', 'simProvider', 'expireDate', 'statusStop'])
+            ->where('vehicleStatus', 1)
+            ->latest('id');
+
+        return $this->datatableResponse(
+            $request,
+            $query,
+            ['vehicleNo', 'mobileNo', 'simProvider'],
+            ['id', 'vehicleNo', 'mobileNo', 'simProvider', 'expireDate', 'statusStop', null],
+            function (Vehicle $vehicle, int $index) {
+                $statusBadge = '<span class="badge badge-' . ((int) $vehicle->statusStop === 1 ? 'danger' : 'success') . '">'
+                    . ((int) $vehicle->statusStop === 1 ? 'Stopped' : 'Active')
+                    . '</span>';
+
+                return [
+                    'index' => $index,
+                    'vehicleNo' => e($vehicle->vehicleNo),
+                    'mobileNo' => e($vehicle->mobileNo),
+                    'simProvider' => e($vehicle->simProvider),
+                    'expireDate' => e($this->displayDate($vehicle->expireDate)),
+                    'statusStop' => $statusBadge,
+                    'actions' => $this->actionGroup([
+                        $this->actionLink(route('v2.market-vehicles.show', $vehicle), 'View', 'btn-outline-info'),
+                        $this->actionLink(route('v2.market-vehicles.edit', $vehicle), 'Edit', 'btn-outline-primary'),
+                        $this->actionForm(route('v2.market-vehicles.status', $vehicle), 'Check', 'btn-outline-success'),
+                        $this->actionForm(
+                            route('v2.market-vehicles.stop-tracking', $vehicle),
+                            'Stop',
+                            'btn-outline-warning',
+                            'POST',
+                            'Stop SIM tracking for this vehicle?'
+                        ),
+                        $this->actionForm(
+                            route('v2.market-vehicles.destroy', $vehicle),
+                            'Delete',
+                            'btn-outline-danger',
+                            'DELETE',
+                            'Remove this market vehicle?'
+                        ),
+                    ]),
+                ];
+            }
+        );
     }
 
     public function create()
@@ -49,6 +93,10 @@ class MarketVehicleController extends BaseController
                 'pingFrequency' => '3600',
             ], $request->user());
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Market Vehicle Registration Failed', $request, [
+                'vehicleNo' => $validated['vehicleNo'],
+                'mobileNo' => $validated['mobileNo'],
+            ]);
             return back()
                 ->withInput()
                 ->with('message', $exception->getMessage())
@@ -77,6 +125,10 @@ class MarketVehicleController extends BaseController
         try {
             $details = $this->integrations->findFleetVehicle($vehicle->vehicleNo, auth()->user());
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Market Vehicle Lookup Failed', request(), [
+                'vehicle_id' => $vehicle->id,
+                'vehicleNo' => $vehicle->vehicleNo,
+            ], 'warning');
             $warning = $exception->getMessage();
         }
 
@@ -112,6 +164,10 @@ class MarketVehicleController extends BaseController
                 'pingFrequency' => '3600',
             ], $request->user());
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Market Vehicle Update Failed', $request, [
+                'vehicle_id' => $vehicle->id,
+                'vehicleNo' => $validated['vehicleNo'],
+            ]);
             return back()
                 ->withInput()
                 ->with('message', $exception->getMessage())
@@ -134,6 +190,10 @@ class MarketVehicleController extends BaseController
         try {
             $details = $this->integrations->findFleetVehicle($vehicle->vehicleNo, $request->user());
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Market Vehicle Status Check Failed', $request, [
+                'vehicle_id' => $vehicle->id,
+                'vehicleNo' => $vehicle->vehicleNo,
+            ], 'warning');
             return back()
                 ->with('message', $exception->getMessage())
                 ->with('message_type', 'danger');
@@ -157,6 +217,11 @@ class MarketVehicleController extends BaseController
         try {
             $this->integrations->stopSimTracking($vehicle->mobileNo, $vehicle->simProvider, $request->user());
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Market Vehicle Stop Tracking Failed', $request, [
+                'vehicle_id' => $vehicle->id,
+                'vehicleNo' => $vehicle->vehicleNo,
+                'mobileNo' => $vehicle->mobileNo,
+            ]);
             return back()
                 ->with('message', $exception->getMessage())
                 ->with('message_type', 'danger');
@@ -170,9 +235,20 @@ class MarketVehicleController extends BaseController
             ->with('message_type', 'success');
     }
 
-    public function destroy(Vehicle $vehicle)
+    public function destroy(Request $request, Vehicle $vehicle)
     {
-        $vehicle->delete();
+        try {
+            $vehicle->delete();
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Market Vehicle Delete Failed', $request, [
+                'vehicle_id' => $vehicle->id,
+                'vehicleNo' => $vehicle->vehicleNo,
+            ]);
+
+            return redirect()->route('v2.market-vehicles.index')
+                ->with('message', $exception->getMessage())
+                ->with('message_type', 'danger');
+        }
 
         return redirect()->route('v2.market-vehicles.index')
             ->with('message', 'Market vehicle removed successfully.')

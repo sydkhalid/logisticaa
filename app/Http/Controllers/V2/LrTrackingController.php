@@ -21,10 +21,6 @@ class LrTrackingController extends BaseController
     {
         return $this->render('lr-trackings.index', [
             'pageTitle' => 'Active LR Tracking',
-            'trackings' => Tracking::query()
-                ->where('status', '0')
-                ->latest('id')
-                ->get(),
             'showCompleted' => false,
         ]);
     }
@@ -33,12 +29,18 @@ class LrTrackingController extends BaseController
     {
         return $this->render('lr-trackings.index', [
             'pageTitle' => 'Completed LR Tracking',
-            'trackings' => Tracking::query()
-                ->whereIn('status', [1, 3])
-                ->latest('id')
-                ->get(),
             'showCompleted' => true,
         ]);
+    }
+
+    public function activeData(Request $request)
+    {
+        return $this->trackingData($request, false);
+    }
+
+    public function completedData(Request $request)
+    {
+        return $this->trackingData($request, true);
     }
 
     public function create()
@@ -126,6 +128,11 @@ class LrTrackingController extends BaseController
             $message = 'LR tracking created and synced successfully.';
             $messageType = 'success';
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'LR Tracking Sync Failed After Create', $request, [
+                'tracking_id' => $tracking->id,
+                'lrNumber' => $tracking->lrNumber,
+                'vehicleNo' => $tracking->vehicleNo,
+            ], 'warning');
             $message = 'LR tracking created, but sync failed: ' . $exception->getMessage();
             $messageType = 'warning';
         }
@@ -177,6 +184,11 @@ class LrTrackingController extends BaseController
             $message = 'LR status updated successfully.';
             $messageType = 'success';
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'LR Tracking Sync Failed After Update', $request, [
+                'tracking_id' => $tracking->id,
+                'lrNumber' => $tracking->lrNumber,
+                'vehicleNo' => $tracking->vehicleNo,
+            ], 'warning');
             $message = 'LR status updated, but sync failed: ' . $exception->getMessage();
             $messageType = 'warning';
         }
@@ -195,6 +207,10 @@ class LrTrackingController extends BaseController
                 ->with('message', 'Tracking location refreshed successfully.')
                 ->with('message_type', 'success');
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'LR Tracking Refresh Failed', $request, [
+                'tracking_id' => $tracking->id,
+                'lrNumber' => $tracking->lrNumber,
+            ]);
             return back()
                 ->with('message', $exception->getMessage())
                 ->with('message_type', 'danger');
@@ -225,6 +241,10 @@ class LrTrackingController extends BaseController
         try {
             $details = $this->integrations->findFleetVehicle($vehicle->vehicleNo, $request->user());
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'LR Vehicle Availability Check Failed', $request, [
+                'vehicle_id' => $vehicle->id,
+                'vehicleNo' => $vehicle->vehicleNo,
+            ], 'warning');
             return response()->json([
                 'approved' => false,
                 'message' => $exception->getMessage(),
@@ -237,5 +257,49 @@ class LrTrackingController extends BaseController
                 ? 'FleetX vehicle approval looks active.'
                 : 'Vehicle is not yet available from FleetX live analytics.',
         ]);
+    }
+
+    private function trackingData(Request $request, bool $completed)
+    {
+        $query = Tracking::query()
+            ->select(['id', 'vehicleNo', 'lspId', 'lrNumber', 'lrDate', 'lrStatus', 'status'])
+            ->when($completed, function ($builder) {
+                $builder->whereIn('status', [1, 3]);
+            }, function ($builder) {
+                $builder->where('status', 0);
+            })
+            ->latest('id');
+
+        return $this->datatableResponse(
+            $request,
+            $query,
+            ['vehicleNo', 'lspId', 'lrNumber', 'lrStatus', 'lrDate'],
+            ['id', 'vehicleNo', 'lspId', 'lrNumber', 'lrDate', 'status', null],
+            function (Tracking $tracking, int $index) use ($completed) {
+                $statusLabel = $completed && (int) $tracking->status === 3 ? 'EPOD Uploaded' : $tracking->lrStatus;
+                $statusBadge = '<span class="badge badge-' . (in_array((int) $tracking->status, [1, 3], true) ? 'success' : 'warning') . '">'
+                    . e($statusLabel)
+                    . '</span>';
+
+                $actions = [];
+
+                if (!$completed) {
+                    $actions[] = $this->actionLink(route('v2.lr-trackings.edit', $tracking), 'Edit', 'btn-outline-primary');
+                }
+
+                $actions[] = $this->actionForm(route('v2.lr-trackings.refresh', $tracking), 'Refresh', 'btn-outline-success');
+                $actions[] = $this->actionLink(route('v2.lr-trackings.show', $tracking), 'View', 'btn-outline-info');
+
+                return [
+                    'index' => $index,
+                    'vehicleNo' => e($tracking->vehicleNo),
+                    'lspId' => e($tracking->lspId),
+                    'lrNumber' => e($tracking->lrNumber),
+                    'lrDate' => e($tracking->lrDate ?: '-'),
+                    'status' => $statusBadge,
+                    'actions' => $this->actionGroup($actions),
+                ];
+            }
+        );
     }
 }

@@ -33,21 +33,7 @@
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                @foreach ($weights as $weight)
-                  <tr>
-                    <td>{{ $loop->iteration }}</td>
-                    <td>{{ $weight->lrNumber }}</td>
-                    <td>{{ $weight->correctedWeight }}</td>
-                    <td>{{ $weight->length }}</td>
-                    <td>{{ $weight->breadth }}</td>
-                    <td>{{ $weight->height }}</td>
-                    <td class="text-end">
-                      <a href="{{ route('v2.weight-corrections.edit', $weight) }}" class="btn btn-outline-primary btn-sm">Re-Correct</a>
-                    </td>
-                  </tr>
-                @endforeach
-              </tbody>
+              <tbody></tbody>
             </table>
           </div>
         </div>
@@ -59,7 +45,21 @@
 @section('scripts')
   <script>
     window.addEventListener('DOMContentLoaded', function () {
-      window.V2.initDataTable('#weights-table');
+      window.V2.initDataTable('#weights-table', {
+        serverSide: true,
+        processing: true,
+        ajax: '{{ route('v2.weight-corrections.data') }}',
+        order: [[0, 'desc']],
+        columns: [
+          { data: 'index', name: 'index' },
+          { data: 'lrNumber', name: 'lrNumber' },
+          { data: 'correctedWeight', name: 'correctedWeight' },
+          { data: 'length', name: 'length' },
+          { data: 'breadth', name: 'breadth' },
+          { data: 'height', name: 'height' },
+          { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-end' }
+        ]
+      });
     });
   </script>
 @endsection

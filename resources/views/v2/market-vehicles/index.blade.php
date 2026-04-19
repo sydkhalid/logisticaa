@@ -33,39 +33,7 @@
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                @foreach ($vehicles as $vehicle)
-                  <tr>
-                    <td>{{ $loop->iteration }}</td>
-                    <td>{{ $vehicle->vehicleNo }}</td>
-                    <td>{{ $vehicle->mobileNo }}</td>
-                    <td>{{ $vehicle->simProvider }}</td>
-                    <td>{{ $vehicle->expireDate }}</td>
-                    <td>
-                      <span class="badge badge-{{ (int) $vehicle->statusStop === 1 ? 'danger' : 'success' }}">
-                        {{ (int) $vehicle->statusStop === 1 ? 'Stopped' : 'Active' }}
-                      </span>
-                    </td>
-                    <td class="text-end">
-                      <a href="{{ route('v2.market-vehicles.show', $vehicle) }}" class="btn btn-outline-info btn-sm">View</a>
-                      <a href="{{ route('v2.market-vehicles.edit', $vehicle) }}" class="btn btn-outline-primary btn-sm">Edit</a>
-                      <form class="d-inline" method="POST" action="{{ route('v2.market-vehicles.status', $vehicle) }}">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-success btn-sm">Check</button>
-                      </form>
-                      <form class="d-inline" method="POST" action="{{ route('v2.market-vehicles.stop-tracking', $vehicle) }}" onsubmit="return window.V2.confirmDelete(this, 'Stop SIM tracking for this vehicle?');">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-warning btn-sm">Stop</button>
-                      </form>
-                      <form class="d-inline" method="POST" action="{{ route('v2.market-vehicles.destroy', $vehicle) }}" onsubmit="return window.V2.confirmDelete(this, 'Remove this market vehicle?');">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
-                      </form>
-                    </td>
-                  </tr>
-                @endforeach
-              </tbody>
+              <tbody></tbody>
             </table>
           </div>
         </div>
@@ -77,7 +45,21 @@
 @section('scripts')
   <script>
     window.addEventListener('DOMContentLoaded', function () {
-      window.V2.initDataTable('#market-vehicles-table');
+      window.V2.initDataTable('#market-vehicles-table', {
+        serverSide: true,
+        processing: true,
+        ajax: '{{ route('v2.market-vehicles.data') }}',
+        order: [[0, 'desc']],
+        columns: [
+          { data: 'index', name: 'index' },
+          { data: 'vehicleNo', name: 'vehicleNo' },
+          { data: 'mobileNo', name: 'mobileNo' },
+          { data: 'simProvider', name: 'simProvider' },
+          { data: 'expireDate', name: 'expireDate' },
+          { data: 'statusStop', name: 'statusStop' },
+          { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-end' }
+        ]
+      });
     });
   </script>
 @endsection

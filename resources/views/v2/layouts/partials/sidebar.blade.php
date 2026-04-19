@@ -61,6 +61,18 @@
       </a>
     </li>
     <li class="nav-item">
+      <a class="nav-link {{ request()->routeIs('v2.logs.*') ? 'active' : '' }}" href="{{ route('v2.logs.index') }}">
+        <i class="icon-book menu-icon"></i>
+        <span class="menu-title">System Logs</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link {{ request()->routeIs('v2.integrations.*') ? 'active' : '' }}" href="{{ route('v2.integrations.index') }}">
+        <i class="icon-link menu-icon"></i>
+        <span class="menu-title">Integrations</span>
+      </a>
+    </li>
+    <li class="nav-item">
       <a class="nav-link {{ request()->routeIs('v2.settings.*') ? 'active' : '' }}" href="{{ route('v2.settings.edit') }}">
         <i class="icon-head menu-icon"></i>
         <span class="menu-title">Settings</span>

@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="{{ asset('plugins/datatables-responsive/css/responsive.bootstrap4.min.css') }}">
   <link rel="stylesheet" href="{{ asset('v2/assets/vendors/select2/select2.min.css') }}">
   <link rel="stylesheet" href="{{ asset('v2/assets/vendors/select2-bootstrap-theme/select2-bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ asset('v2/assets/vendors/sweetalert2/sweetalert2.min.css') }}">
   <link rel="stylesheet" href="{{ asset('v2/assets/css/style.css') }}">
   <link rel="stylesheet" href="{{ asset('v2/assets/css/v2.css') }}">
   <link rel="shortcut icon" href="{{ asset('v2/assets/images/favicon.png') }}">

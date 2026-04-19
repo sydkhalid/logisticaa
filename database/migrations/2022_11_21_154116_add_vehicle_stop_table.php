@@ -14,7 +14,9 @@ class AddVehicleStopTable extends Migration
     public function up()
     {
         Schema::table('vehicles', function (Blueprint $table) {
-            $table->boolean('statusStop')->nullable()->after('vehicleStatus');
+            if (!Schema::hasColumn('vehicles', 'statusStop')) {
+                $table->boolean('statusStop')->nullable()->after('vehicleStatus');
+            }
         });
     }
 

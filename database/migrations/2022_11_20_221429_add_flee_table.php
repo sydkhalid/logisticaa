@@ -14,8 +14,13 @@ class AddFleeTable extends Migration
     public function up()
     {
         Schema::table('settings', function (Blueprint $table) {
-            $table->string('flee_link')->nullable()->after('address');
-            $table->string('access_token')->nullable()->after('flee_link');
+            if (!Schema::hasColumn('settings', 'flee_link')) {
+                $table->string('flee_link')->nullable()->after('address');
+            }
+
+            if (!Schema::hasColumn('settings', 'access_token')) {
+                $table->string('access_token')->nullable()->after('flee_link');
+            }
         });
     }
 

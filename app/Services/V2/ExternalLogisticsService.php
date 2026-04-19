@@ -10,6 +10,7 @@ use App\Models\Vehicle;
 use App\Models\Weight;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -97,7 +98,7 @@ class ExternalLogisticsService
         ], null, false);
     }
 
-    public function syncSystemBocshToken(): ?string
+    public function syncSystemBocshToken(?User $user = null): ?string
     {
         $systemUser = User::query()->first();
         $email = env('TRAVIS_SYSTEM_EMAIL', $systemUser ? $systemUser->email : self::SYSTEM_EMAIL);
@@ -106,7 +107,16 @@ class ExternalLogisticsService
 
         if ($token && $systemUser) {
             $systemUser->bearer_token = $token;
-            $systemUser->save();
+            DB::table('users')->where('id', $systemUser->id)->update([
+                'bearer_token' => $token,
+            ]);
+        }
+
+        if ($token && $user) {
+            $user->bearer_token = $token;
+            DB::table('users')->where('id', $user->id)->update([
+                'bearer_token' => $token,
+            ]);
         }
 
         return $token;
@@ -133,9 +143,18 @@ class ExternalLogisticsService
         $token = $response['access_token'] ?? null;
         $targetUser = $user ?: User::query()->first();
 
+        if ($token) {
+            $settings->access_token = $token;
+            DB::table('settings')->where('id', $settings->id)->update([
+                'access_token' => $token,
+            ]);
+        }
+
         if ($token && $targetUser) {
             $targetUser->access_token = $token;
-            $targetUser->save();
+            DB::table('users')->where('id', $targetUser->id)->update([
+                'access_token' => $token,
+            ]);
         }
 
         return $token;
@@ -194,15 +213,7 @@ class ExternalLogisticsService
             throw new RuntimeException('WheelsEye tracking configuration is incomplete.');
         }
 
-        $client = new Client([
-            'base_uri' => $this->normalizeBaseUri($settings->tracing_link),
-            'verify' => $this->verifyTls(),
-            'timeout' => self::DEFAULT_TIMEOUT,
-            'connect_timeout' => self::DEFAULT_CONNECT_TIMEOUT,
-        ]);
-
-        $response = $client->request('GET', 'currentLoc?accessToken=' . $settings->address);
-        $payload = json_decode((string) $response->getBody(), true) ?: [];
+        $payload = $this->wheelsEyeSnapshot($settings);
         $needle = strtoupper(trim($vehicleNo));
 
         foreach (($payload['data']['list'] ?? []) as $vehicle) {
@@ -243,6 +254,218 @@ class ExternalLogisticsService
             'location' => $raw['location'] ?? null,
             'raw' => $raw,
         ];
+    }
+
+    public function integrationHealth(?User $user = null): array
+    {
+        return [
+            'fleetx' => $this->fleetHealth($user),
+            'wheelseye' => $this->wheelsEyeHealth(),
+            'travis' => $this->travisHealth($user),
+        ];
+    }
+
+    public function fleetHealth(?User $user = null): array
+    {
+        $settings = $this->getSettings();
+        $localVehicles = $this->localVehicleNumbers(1);
+        $health = [
+            'label' => 'FleetX',
+            'status' => 'offline',
+            'configured' => (bool) ($settings && $settings->flee_link),
+            'base_url' => $settings ? $settings->flee_link : null,
+            'message' => 'FleetX link is not configured.',
+            'token_source' => $this->fleetTokenSource($user),
+            'stored_token' => $this->maskSecret($this->existingFleetToken($user)),
+            'token_refreshed' => false,
+            'local_vehicle_count' => count($localVehicles),
+            'remote_vehicle_count' => 0,
+            'matched_vehicle_count' => 0,
+            'coverage_percent' => 0,
+            'running_vehicle_count' => 0,
+            'sample_remote' => null,
+            'sample_matches' => [],
+            'issues' => [],
+        ];
+
+        if (!$health['configured']) {
+            return $health;
+        }
+
+        try {
+            $client = $this->fleetClient($settings);
+            $token = $this->existingFleetToken($user);
+
+            if (!$token) {
+                $token = $this->refreshFleetToken($user);
+                $health['token_refreshed'] = !empty($token);
+                if ($health['token_refreshed']) {
+                    $health['issues'][] = 'FleetX token was missing and has been refreshed from the API login.';
+                }
+            }
+
+            if (!$token) {
+                throw new RuntimeException('FleetX access token is not available.');
+            }
+
+            try {
+                $payload = $this->fleetAnalyticsRequest($client, $token);
+            } catch (RequestException $exception) {
+                $status = $exception->getResponse() ? $exception->getResponse()->getStatusCode() : null;
+
+                if (!in_array($status, [401, 403], true)) {
+                    throw $exception;
+                }
+
+                $token = $this->refreshFleetToken($user);
+                if (!$token) {
+                    throw new RuntimeException('FleetX access token refresh failed.');
+                }
+
+                $health['token_refreshed'] = true;
+                $health['issues'][] = 'Stored FleetX token was rejected and replaced with a fresh token.';
+                $payload = $this->fleetAnalyticsRequest($client, $token);
+            }
+
+            $remoteVehicles = $this->extractVehicleNumbers($payload['vehicles'] ?? []);
+            $matches = array_values(array_intersect($localVehicles, $remoteVehicles));
+
+            $health['token_source'] = $this->fleetTokenSource($user);
+            $health['stored_token'] = $this->maskSecret($this->existingFleetToken($user));
+            $health['remote_vehicle_count'] = count($remoteVehicles);
+            $health['matched_vehicle_count'] = count($matches);
+            $health['coverage_percent'] = $this->coveragePercent($health['matched_vehicle_count'], $health['local_vehicle_count']);
+            $health['running_vehicle_count'] = (int) ($payload['runningVehicles'] ?? 0);
+            $health['sample_remote'] = $remoteVehicles ? $remoteVehicles[0] : null;
+            $health['sample_matches'] = array_slice($matches, 0, 6);
+            $this->syncFleetTokenToSettings($token);
+
+            if ($health['remote_vehicle_count'] === 0) {
+                $health['status'] = 'warning';
+                $health['message'] = 'FleetX responded, but no live vehicles were returned.';
+            } elseif ($health['local_vehicle_count'] === 0) {
+                $health['status'] = 'online';
+                $health['message'] = 'FleetX analytics is reachable. No local market vehicles are stored yet.';
+            } elseif ($health['matched_vehicle_count'] === 0) {
+                $health['status'] = 'warning';
+                $health['message'] = 'FleetX is reachable, but none of the local market vehicles matched the live analytics feed.';
+            } elseif ($health['matched_vehicle_count'] < $health['local_vehicle_count']) {
+                $health['status'] = 'warning';
+                $health['message'] = 'FleetX is reachable with partial coverage of local market vehicles.';
+            } else {
+                $health['status'] = 'online';
+                $health['message'] = 'FleetX analytics and token flow are healthy.';
+            }
+        } catch (RequestException $exception) {
+            $health['message'] = $this->extractErrorMessage($exception, 'FleetX request failed.');
+        } catch (\Throwable $exception) {
+            $health['message'] = $exception->getMessage();
+        }
+
+        return $health;
+    }
+
+    public function wheelsEyeHealth(): array
+    {
+        $settings = $this->getSettings();
+        $localVehicles = $this->localVehicleNumbers(0);
+        $health = [
+            'label' => 'WheelsEye',
+            'status' => 'offline',
+            'configured' => (bool) ($settings && $settings->tracing_link && $settings->address),
+            'base_url' => $settings ? $settings->tracing_link : null,
+            'message' => 'WheelsEye tracking configuration is incomplete.',
+            'token_source' => 'Settings',
+            'stored_token' => $this->maskSecret($settings ? $settings->address : null),
+            'local_vehicle_count' => count($localVehicles),
+            'remote_vehicle_count' => 0,
+            'matched_vehicle_count' => 0,
+            'coverage_percent' => 0,
+            'sample_remote' => null,
+            'sample_matches' => [],
+            'issues' => [],
+        ];
+
+        if (!$health['configured']) {
+            return $health;
+        }
+
+        try {
+            $payload = $this->wheelsEyeSnapshot($settings);
+            $remoteVehicles = $this->extractVehicleNumbers($payload['data']['list'] ?? []);
+            $matches = array_values(array_intersect($localVehicles, $remoteVehicles));
+
+            $health['remote_vehicle_count'] = count($remoteVehicles);
+            $health['matched_vehicle_count'] = count($matches);
+            $health['coverage_percent'] = $this->coveragePercent($health['matched_vehicle_count'], $health['local_vehicle_count']);
+            $health['sample_remote'] = $remoteVehicles ? $remoteVehicles[0] : null;
+            $health['sample_matches'] = array_slice($matches, 0, 6);
+
+            if ($health['remote_vehicle_count'] === 0) {
+                $health['status'] = 'warning';
+                $health['message'] = 'WheelsEye responded, but the token did not return any vehicles.';
+            } elseif ($health['local_vehicle_count'] === 0) {
+                $health['status'] = 'online';
+                $health['message'] = 'WheelsEye tracking is reachable. No local own vehicles are stored yet.';
+            } elseif ($health['matched_vehicle_count'] === 0) {
+                $health['status'] = 'warning';
+                $health['message'] = 'WheelsEye is reachable, but none of the local own vehicles matched the returned list.';
+            } elseif ($health['matched_vehicle_count'] < $health['local_vehicle_count']) {
+                $health['status'] = 'warning';
+                $health['message'] = 'WheelsEye is reachable with partial coverage of local own vehicles.';
+            } else {
+                $health['status'] = 'online';
+                $health['message'] = 'WheelsEye tracking is healthy for the current own-vehicle set.';
+            }
+        } catch (RequestException $exception) {
+            $health['message'] = $this->extractErrorMessage($exception, 'WheelsEye request failed.');
+        } catch (\Throwable $exception) {
+            $health['message'] = $exception->getMessage();
+        }
+
+        return $health;
+    }
+
+    public function travisHealth(?User $user = null): array
+    {
+        $settings = $this->getSettings();
+        $systemUser = User::query()->first();
+        $email = env('TRAVIS_SYSTEM_EMAIL', $systemUser ? $systemUser->email : self::SYSTEM_EMAIL);
+        $health = [
+            'label' => 'Travis',
+            'status' => 'offline',
+            'configured' => (bool) ($settings && $settings->bocsh_link),
+            'base_url' => $settings ? $settings->bocsh_link : null,
+            'message' => 'Travis link is not configured.',
+            'token_source' => $this->bocshTokenSource($user),
+            'stored_token' => $this->maskSecret($this->existingBocshToken($user)),
+            'system_email' => $email,
+            'issued_token' => '-',
+            'active_tracking_count' => Tracking::query()->where('status', 0)->count(),
+            'completed_tracking_count' => Tracking::query()->whereIn('status', [1, 3])->count(),
+            'issues' => [],
+        ];
+
+        if (!$health['configured']) {
+            return $health;
+        }
+
+        try {
+            $response = $this->loginToBocsh($email, env('TRAVIS_SYSTEM_PASSWORD', self::SYSTEM_PASSWORD));
+            if (!$this->loginSucceeded($response)) {
+                throw new RuntimeException($response['message'] ?? 'Travis authentication failed.');
+            }
+
+            $health['status'] = 'online';
+            $health['message'] = 'Travis authentication succeeded and the LR API is reachable.';
+            $health['issued_token'] = $this->maskSecret($response['token'] ?? null);
+        } catch (RequestException $exception) {
+            $health['message'] = $this->extractErrorMessage($exception, 'Travis request failed.');
+        } catch (\Throwable $exception) {
+            $health['message'] = $exception->getMessage();
+        }
+
+        return $health;
     }
 
     public function syncTracking(Tracking $tracking, ?User $user = null): array
@@ -360,6 +583,7 @@ class ExternalLogisticsService
             'timeout' => self::DEFAULT_TIMEOUT,
             'connect_timeout' => self::DEFAULT_CONNECT_TIMEOUT,
         ]);
+        $token = null;
 
         if ($authenticate) {
             $token = $this->getFleetToken($user);
@@ -373,6 +597,7 @@ class ExternalLogisticsService
 
         try {
             $response = $client->request($method, $uri, $options);
+            $this->syncFleetTokenToSettings($token ?? null);
 
             return json_decode((string) $response->getBody(), true) ?: [];
         } catch (RequestException $exception) {
@@ -383,6 +608,7 @@ class ExternalLogisticsService
                 if ($freshToken) {
                     $options['headers']['Authorization'] = 'Bearer ' . $freshToken;
                     $retry = $client->request($method, $uri, $options);
+                    $this->syncFleetTokenToSettings($freshToken);
 
                     return json_decode((string) $retry->getBody(), true) ?: [];
                 }
@@ -436,7 +662,7 @@ class ExternalLogisticsService
             $status = $exception->getResponse() ? $exception->getResponse()->getStatusCode() : null;
 
             if ($authenticate && in_array($status, [401, 403], true)) {
-                $freshToken = $this->syncSystemBocshToken();
+                $freshToken = $this->syncSystemBocshToken($user);
                 if ($freshToken) {
                     $options['headers']['Authorization'] = 'Bearer ' . $freshToken;
                     $retry = $client->request($method, ltrim($uri, '/'), $options);
@@ -465,6 +691,211 @@ class ExternalLogisticsService
     private function normalizeBaseUri(string $uri): string
     {
         return rtrim($uri, '/') . '/';
+    }
+
+    private function fleetClient(Setting $settings): Client
+    {
+        return new Client([
+            'base_uri' => $this->normalizeBaseUri($settings->flee_link),
+            'verify' => $this->verifyTls(),
+            'timeout' => self::DEFAULT_TIMEOUT,
+            'connect_timeout' => self::DEFAULT_CONNECT_TIMEOUT,
+        ]);
+    }
+
+    private function wheelsEyeClient(Setting $settings): Client
+    {
+        return new Client([
+            'base_uri' => $this->normalizeBaseUri($settings->tracing_link),
+            'verify' => $this->verifyTls(),
+            'timeout' => self::DEFAULT_TIMEOUT,
+            'connect_timeout' => self::DEFAULT_CONNECT_TIMEOUT,
+        ]);
+    }
+
+    private function fleetAnalyticsRequest(Client $client, string $token): array
+    {
+        $response = $client->request('GET', 'analytics/live?', [
+            'headers' => [
+                'Accept' => 'application/json',
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type' => 'application/json',
+            ],
+        ]);
+
+        return json_decode((string) $response->getBody(), true) ?: [];
+    }
+
+    private function wheelsEyeSnapshot(Setting $settings): array
+    {
+        $client = $this->wheelsEyeClient($settings);
+        $response = $client->request('GET', 'currentLoc?accessToken=' . $settings->address, [
+            'headers' => [
+                'Accept' => 'application/json',
+            ],
+        ]);
+
+        return json_decode((string) $response->getBody(), true) ?: [];
+    }
+
+    private function localVehicleNumbers(int $vehicleStatus): array
+    {
+        $rows = Vehicle::query()
+            ->where('vehicleStatus', $vehicleStatus)
+            ->pluck('vehicleNo');
+
+        $numbers = [];
+
+        foreach ($rows as $vehicleNo) {
+            $normalized = $this->normalizeVehicleNumber($vehicleNo);
+            if ($normalized) {
+                $numbers[$normalized] = $normalized;
+            }
+        }
+
+        return array_values($numbers);
+    }
+
+    private function extractVehicleNumbers(array $vehicles): array
+    {
+        $numbers = [];
+
+        foreach ($vehicles as $vehicle) {
+            $normalized = $this->normalizeVehicleNumber($vehicle['vehicleNumber'] ?? null);
+            if ($normalized) {
+                $numbers[$normalized] = $normalized;
+            }
+        }
+
+        return array_values($numbers);
+    }
+
+    private function normalizeVehicleNumber($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = strtoupper(trim((string) $value));
+
+        return $normalized === '' ? null : $normalized;
+    }
+
+    private function coveragePercent(int $matched, int $local): float
+    {
+        if ($local < 1) {
+            return 0;
+        }
+
+        return round(($matched * 100) / $local, 1);
+    }
+
+    private function existingFleetToken(?User $user = null): ?string
+    {
+        if ($user && $user->access_token) {
+            return $user->access_token;
+        }
+
+        $settings = $this->getSettings();
+        if ($settings && $settings->access_token) {
+            return $settings->access_token;
+        }
+
+        $systemUser = User::query()->first();
+        if ($systemUser && $systemUser->access_token) {
+            return $systemUser->access_token;
+        }
+
+        return null;
+    }
+
+    private function existingBocshToken(?User $user = null): ?string
+    {
+        if ($user && $user->bearer_token) {
+            return $user->bearer_token;
+        }
+
+        $systemUser = User::query()->first();
+        if ($systemUser && $systemUser->bearer_token) {
+            return $systemUser->bearer_token;
+        }
+
+        return null;
+    }
+
+    private function fleetTokenSource(?User $user = null): string
+    {
+        if ($user && $user->access_token) {
+            return 'User';
+        }
+
+        $settings = $this->getSettings();
+        if ($settings && $settings->access_token) {
+            return 'Settings';
+        }
+
+        $systemUser = User::query()->first();
+        if ($systemUser && $systemUser->access_token) {
+            return 'System User';
+        }
+
+        return 'Missing';
+    }
+
+    private function bocshTokenSource(?User $user = null): string
+    {
+        if ($user && $user->bearer_token) {
+            return 'User';
+        }
+
+        $systemUser = User::query()->first();
+        if ($systemUser && $systemUser->bearer_token) {
+            return 'System User';
+        }
+
+        return 'Missing';
+    }
+
+    private function maskSecret(?string $value): string
+    {
+        if (!$value) {
+            return '-';
+        }
+
+        $length = strlen($value);
+
+        if ($length <= 8) {
+            return str_repeat('*', $length);
+        }
+
+        return substr($value, 0, 4) . str_repeat('*', $length - 8) . substr($value, -4);
+    }
+
+    private function syncFleetTokenToSettings(?string $token): void
+    {
+        if (!$token) {
+            return;
+        }
+
+        $settings = $this->getSettings();
+        if (!$settings) {
+            return;
+        }
+
+        if ($settings->access_token === $token) {
+            return;
+        }
+
+        try {
+            $settings->access_token = $token;
+            DB::table('settings')->where('id', $settings->id)->update([
+                'access_token' => $token,
+            ]);
+        } catch (\Throwable $exception) {
+            Log::warning('Unable to persist FleetX token to settings', [
+                'message' => $exception->getMessage(),
+            ]);
+        }
     }
 
     private function trackingPayload(Tracking $tracking): array

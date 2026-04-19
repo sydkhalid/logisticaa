@@ -31,17 +31,7 @@
                   <th>Created At</th>
                 </tr>
               </thead>
-              <tbody>
-                @foreach ($epods as $epod)
-                  <tr>
-                    <td>{{ $loop->iteration }}</td>
-                    <td>{{ $epod->lspId }}</td>
-                    <td>{{ $epod->lrNumber }}</td>
-                    <td><span class="badge badge-success">Success</span></td>
-                    <td>{{ $epod->created_at }}</td>
-                  </tr>
-                @endforeach
-              </tbody>
+              <tbody></tbody>
             </table>
           </div>
         </div>
@@ -53,7 +43,19 @@
 @section('scripts')
   <script>
     window.addEventListener('DOMContentLoaded', function () {
-      window.V2.initDataTable('#epods-table');
+      window.V2.initDataTable('#epods-table', {
+        serverSide: true,
+        processing: true,
+        ajax: '{{ route('v2.epods.data') }}',
+        order: [[0, 'desc']],
+        columns: [
+          { data: 'index', name: 'index' },
+          { data: 'lspId', name: 'lspId' },
+          { data: 'lrNumber', name: 'lrNumber' },
+          { data: 'status', name: 'status' },
+          { data: 'created_at', name: 'created_at' }
+        ]
+      });
     });
   </script>
 @endsection

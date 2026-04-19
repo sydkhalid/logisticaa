@@ -30,24 +30,7 @@
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                @foreach ($vehicles as $vehicle)
-                  <tr>
-                    <td>{{ $loop->iteration }}</td>
-                    <td>{{ $vehicle->vehicleNo }}</td>
-                    <td>{{ $vehicle->created_at }}</td>
-                    <td class="text-end">
-                      <a href="{{ route('v2.vehicles.show', $vehicle) }}" class="btn btn-outline-info btn-sm">View</a>
-                      <a href="{{ route('v2.vehicles.edit', $vehicle) }}" class="btn btn-outline-primary btn-sm">Edit</a>
-                      <form class="d-inline" method="POST" action="{{ route('v2.vehicles.destroy', $vehicle) }}" onsubmit="return window.V2.confirmDelete(this, 'Remove this vehicle?');">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-outline-danger btn-sm">Delete</button>
-                      </form>
-                    </td>
-                  </tr>
-                @endforeach
-              </tbody>
+              <tbody></tbody>
             </table>
           </div>
         </div>
@@ -59,7 +42,18 @@
 @section('scripts')
   <script>
     window.addEventListener('DOMContentLoaded', function () {
-      window.V2.initDataTable('#vehicles-table');
+      window.V2.initDataTable('#vehicles-table', {
+        serverSide: true,
+        processing: true,
+        ajax: '{{ route('v2.vehicles.data') }}',
+        order: [[0, 'desc']],
+        columns: [
+          { data: 'index', name: 'index' },
+          { data: 'vehicleNo', name: 'vehicleNo' },
+          { data: 'created_at', name: 'created_at' },
+          { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-end' }
+        ]
+      });
     });
   </script>
 @endsection

@@ -18,11 +18,40 @@ class VehicleController extends BaseController
     {
         return $this->render('vehicles.index', [
             'pageTitle' => 'Own Vehicles',
-            'vehicles' => Vehicle::query()
-                ->where('vehicleStatus', 0)
-                ->latest('id')
-                ->get(),
         ]);
+    }
+
+    public function data(Request $request)
+    {
+        $query = Vehicle::query()
+            ->select(['id', 'vehicleNo', 'created_at'])
+            ->where('vehicleStatus', 0)
+            ->latest('id');
+
+        return $this->datatableResponse(
+            $request,
+            $query,
+            ['vehicleNo'],
+            ['id', 'vehicleNo', 'created_at', null],
+            function (Vehicle $vehicle, int $index) {
+                return [
+                    'index' => $index,
+                    'vehicleNo' => e($vehicle->vehicleNo),
+                    'created_at' => e($this->displayDate($vehicle->created_at)),
+                    'actions' => $this->actionGroup([
+                        $this->actionLink(route('v2.vehicles.show', $vehicle), 'View', 'btn-outline-info'),
+                        $this->actionLink(route('v2.vehicles.edit', $vehicle), 'Edit', 'btn-outline-primary'),
+                        $this->actionForm(
+                            route('v2.vehicles.destroy', $vehicle),
+                            'Delete',
+                            'btn-outline-danger',
+                            'DELETE',
+                            'Remove this vehicle?'
+                        ),
+                    ]),
+                ];
+            }
+        );
     }
 
     public function create()
@@ -41,11 +70,22 @@ class VehicleController extends BaseController
             'vehicleNo' => ['required', 'string', Rule::unique('vehicles', 'vehicleNo')],
         ]);
 
-        $vehicle = new Vehicle();
-        $vehicle->vehicleNo = strtoupper(trim($validated['vehicleNo']));
-        $vehicle->vehicleStatus = 0;
-        $vehicle->statusStop = 0;
-        $vehicle->save();
+        try {
+            $vehicle = new Vehicle();
+            $vehicle->vehicleNo = strtoupper(trim($validated['vehicleNo']));
+            $vehicle->vehicleStatus = 0;
+            $vehicle->statusStop = 0;
+            $vehicle->save();
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Own Vehicle Create Failed', $request, [
+                'vehicleNo' => $validated['vehicleNo'],
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('message', $exception->getMessage())
+                ->with('message_type', 'danger');
+        }
 
         return redirect()->route('v2.vehicles.index')
             ->with('message', 'Own vehicle added successfully.')
@@ -60,6 +100,10 @@ class VehicleController extends BaseController
         try {
             $location = $this->integrations->locateVehicle($vehicle, auth()->user());
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Own Vehicle Location Lookup Failed', request(), [
+                'vehicle_id' => $vehicle->id,
+                'vehicleNo' => $vehicle->vehicleNo,
+            ], 'warning');
             $warning = $exception->getMessage();
         }
 
@@ -91,17 +135,40 @@ class VehicleController extends BaseController
             ],
         ]);
 
-        $vehicle->vehicleNo = strtoupper(trim($validated['vehicleNo']));
-        $vehicle->save();
+        try {
+            $vehicle->vehicleNo = strtoupper(trim($validated['vehicleNo']));
+            $vehicle->save();
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Own Vehicle Update Failed', $request, [
+                'vehicle_id' => $vehicle->id,
+                'vehicleNo' => $validated['vehicleNo'],
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('message', $exception->getMessage())
+                ->with('message_type', 'danger');
+        }
 
         return redirect()->route('v2.vehicles.index')
             ->with('message', 'Own vehicle updated successfully.')
             ->with('message_type', 'success');
     }
 
-    public function destroy(Vehicle $vehicle)
+    public function destroy(Request $request, Vehicle $vehicle)
     {
-        $vehicle->delete();
+        try {
+            $vehicle->delete();
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Own Vehicle Delete Failed', $request, [
+                'vehicle_id' => $vehicle->id,
+                'vehicleNo' => $vehicle->vehicleNo,
+            ]);
+
+            return redirect()->route('v2.vehicles.index')
+                ->with('message', $exception->getMessage())
+                ->with('message_type', 'danger');
+        }
 
         return redirect()->route('v2.vehicles.index')
             ->with('message', 'Own vehicle removed successfully.')

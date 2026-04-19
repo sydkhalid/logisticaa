@@ -18,11 +18,31 @@ class EpodController extends BaseController
     {
         return $this->render('epods.index', [
             'pageTitle' => 'EPOD Uploads',
-            'epods' => Epod::query()
-                ->where('status', 1)
-                ->latest('id')
-                ->get(),
         ]);
+    }
+
+    public function data(Request $request)
+    {
+        $query = Epod::query()
+            ->select(['id', 'lspId', 'lrNumber', 'status', 'created_at'])
+            ->where('status', 1)
+            ->latest('id');
+
+        return $this->datatableResponse(
+            $request,
+            $query,
+            ['lspId', 'lrNumber'],
+            ['id', 'lspId', 'lrNumber', 'status', 'created_at'],
+            function (Epod $epod, int $index) {
+                return [
+                    'index' => $index,
+                    'lspId' => e($epod->lspId),
+                    'lrNumber' => e($epod->lrNumber),
+                    'status' => '<span class="badge badge-success">Uploaded</span>',
+                    'created_at' => e($this->displayDate($epod->created_at)),
+                ];
+            }
+        );
     }
 
     public function create()
@@ -90,6 +110,12 @@ class EpodController extends BaseController
                 ? $this->integrations->reuploadEpod($epod, $base64, $request->user())
                 : $this->integrations->uploadEpod($epod, $base64, $request->user());
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'EPOD Upload Failed', $request, [
+                'epod_id' => $epod->id,
+                'lrNumber' => $epod->lrNumber,
+                'lspId' => $epod->lspId,
+                'reupload' => $existingUploadedEpod,
+            ]);
             return back()
                 ->withInput($request->only('lspId', 'lrNumber'))
                 ->with('message', $exception->getMessage())

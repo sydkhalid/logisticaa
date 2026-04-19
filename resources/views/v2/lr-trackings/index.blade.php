@@ -34,32 +34,7 @@
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                @foreach ($trackings as $tracking)
-                  <tr>
-                    <td>{{ $loop->iteration }}</td>
-                    <td>{{ $tracking->vehicleNo }}</td>
-                    <td>{{ $tracking->lspId }}</td>
-                    <td>{{ $tracking->lrNumber }}</td>
-                    <td>{{ $tracking->lrDate }}</td>
-                    <td>
-                      <span class="badge badge-{{ in_array((int) $tracking->status, [1, 3], true) ? 'success' : 'warning' }}">
-                        {{ $showCompleted && (int) $tracking->status === 3 ? 'EPOD Uploaded' : $tracking->lrStatus }}
-                      </span>
-                    </td>
-                    <td class="text-end">
-                      @if (!$showCompleted)
-                        <a href="{{ route('v2.lr-trackings.edit', $tracking) }}" class="btn btn-outline-primary btn-sm">Edit</a>
-                      @endif
-                      <form class="d-inline" method="POST" action="{{ route('v2.lr-trackings.refresh', $tracking) }}">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-success btn-sm">Refresh</button>
-                      </form>
-                      <a href="{{ route('v2.lr-trackings.show', $tracking) }}" class="btn btn-outline-info btn-sm">View</a>
-                    </td>
-                  </tr>
-                @endforeach
-              </tbody>
+              <tbody></tbody>
             </table>
           </div>
         </div>
@@ -71,7 +46,21 @@
 @section('scripts')
   <script>
     window.addEventListener('DOMContentLoaded', function () {
-      window.V2.initDataTable('#trackings-table');
+      window.V2.initDataTable('#trackings-table', {
+        serverSide: true,
+        processing: true,
+        ajax: '{{ $showCompleted ? route('v2.lr-trackings.completed.data') : route('v2.lr-trackings.data') }}',
+        order: [[0, 'desc']],
+        columns: [
+          { data: 'index', name: 'index' },
+          { data: 'vehicleNo', name: 'vehicleNo' },
+          { data: 'lspId', name: 'lspId' },
+          { data: 'lrNumber', name: 'lrNumber' },
+          { data: 'lrDate', name: 'lrDate' },
+          { data: 'status', name: 'status' },
+          { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-end' }
+        ]
+      });
     });
   </script>
 @endsection

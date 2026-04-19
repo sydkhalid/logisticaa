@@ -18,8 +18,34 @@ class WeightCorrectionController extends BaseController
     {
         return $this->render('weight-corrections.index', [
             'pageTitle' => 'Weight Corrections',
-            'weights' => Weight::query()->latest('id')->get(),
         ]);
+    }
+
+    public function data(Request $request)
+    {
+        $query = Weight::query()
+            ->select(['id', 'lrNumber', 'correctedWeight', 'length', 'breadth', 'height'])
+            ->latest('id');
+
+        return $this->datatableResponse(
+            $request,
+            $query,
+            ['lrNumber', 'correctedWeight', 'length', 'breadth', 'height'],
+            ['id', 'lrNumber', 'correctedWeight', 'length', 'breadth', 'height', null],
+            function (Weight $weight, int $index) {
+                return [
+                    'index' => $index,
+                    'lrNumber' => e($weight->lrNumber),
+                    'correctedWeight' => e($weight->correctedWeight),
+                    'length' => e($weight->length),
+                    'breadth' => e($weight->breadth),
+                    'height' => e($weight->height),
+                    'actions' => $this->actionGroup([
+                        $this->actionLink(route('v2.weight-corrections.edit', $weight), 'Re-Correct', 'btn-outline-primary'),
+                    ]),
+                ];
+            }
+        );
     }
 
     public function create()
@@ -69,6 +95,11 @@ class WeightCorrectionController extends BaseController
             $message = 'Weight correction saved successfully.';
             $messageType = 'success';
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Weight Correction Sync Failed After Create', $request, [
+                'weight_id' => $weight->id,
+                'lrNumber' => $weight->lrNumber,
+                'lspId' => $weight->lspId,
+            ], 'warning');
             $message = 'Weight saved, but sync failed: ' . $exception->getMessage();
             $messageType = 'warning';
         }
@@ -109,6 +140,11 @@ class WeightCorrectionController extends BaseController
             $message = 'Weight re-corrected successfully.';
             $messageType = 'success';
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Weight Correction Sync Failed After Update', $request, [
+                'weight_id' => $weight->id,
+                'lrNumber' => $weight->lrNumber,
+                'lspId' => $weight->lspId,
+            ], 'warning');
             $message = 'Weight updated, but sync failed: ' . $exception->getMessage();
             $messageType = 'warning';
         }

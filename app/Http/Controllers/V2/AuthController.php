@@ -56,6 +56,9 @@ class AuthController extends BaseController
                 try {
                     $this->integrations->refreshFleetToken($user);
                 } catch (\Throwable $exception) {
+                    $this->logHandledException($exception, 'FleetX Token Refresh Failed During Login', $request, [
+                        'email' => $credentials['email'],
+                    ], 'warning');
                     // FleetX is optional for login; the dashboard already falls back cleanly.
                 }
             }
@@ -64,6 +67,9 @@ class AuthController extends BaseController
                 ->with('message', 'Welcome back, ' . ($user ? $user->name : 'user') . '.')
                 ->with('message_type', 'success');
         } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'V2 Login Failed', $request, [
+                'email' => $credentials['email'],
+            ]);
             return back()
                 ->withInput($request->only('email'))
                 ->withErrors(['login' => $exception->getMessage()])

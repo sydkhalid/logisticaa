@@ -14,7 +14,9 @@ class AddAccessTable extends Migration
     public function up()
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('access_token')->nullable()->after('bearer_token');
+            if (!Schema::hasColumn('users', 'access_token')) {
+                $table->string('access_token')->nullable()->after('bearer_token');
+            }
         });
     }
 

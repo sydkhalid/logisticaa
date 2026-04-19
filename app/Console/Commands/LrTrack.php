@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use App\Services\ActivityLogService;
 use App\Models\Tracking;
 use App\Models\Vehicle;
 use App\Http\Controllers\TrackController;
@@ -41,30 +42,45 @@ class LrTrack extends Command
      */
     public function handle()
     {
+        $activityLogs = app(ActivityLogService::class);
+
         Log::info('------------------------------------------------------');
         Log::info('Starting Lr Track....');
-        $auth = new TrackController();
-        $access_token = $auth->getauthenticate();
-        if($access_token['success'] == 'true'){
-               $wheelseye = Tracking::where('status' ,'0')->where('vehicle_status' ,'0')->get();
-                 if($wheelseye){
-                    foreach($wheelseye as $key=>$lrlist){
-                       $list = $auth->wheelseyeapi($lrlist['vehicleNo']);
-                     
-                   }               
-               }
-            $flee = Tracking::where('status','0')->where('vehicle_status','1')->get();
-              foreach($flee as $key=>$lrlistflee){
-                  if($flee){
-                      $list = $auth->fleeapi($lrlistflee['vehicleNo']);
-                   
-                  }               
-              }
+        $activityLogs->logSystem('info', 'Lr Track Start', 'Scheduled LR tracking sync started.');
+
+        try {
+            $auth = new TrackController();
+            $access_token = $auth->getauthenticate();
+            if($access_token['success'] == 'true'){
+                   $wheelseye = Tracking::where('status' ,'0')->where('vehicle_status' ,'0')->get();
+                     if($wheelseye){
+                        foreach($wheelseye as $key=>$lrlist){
+                           $list = $auth->wheelseyeapi($lrlist['vehicleNo']);
+                         
+                       }               
+                   }
+                $flee = Tracking::where('status','0')->where('vehicle_status','1')->get();
+                  foreach($flee as $key=>$lrlistflee){
+                      if($flee){
+                          $list = $auth->fleeapi($lrlistflee['vehicleNo']);
+                       
+                      }               
+                  }
+            }
+            $sendtobocsh = Tracking::where('status' ,'0')->get();
+            $save = $auth->sendbocsh($sendtobocsh);
+
+            Log::info('Lr Track was finished');
+            Log::info('------------------------------------------------------');
+            $activityLogs->logSystem('success', 'Lr Track Complete', 'Scheduled LR tracking sync finished successfully.', [
+                'active_tracking_count' => Tracking::where('status', '0')->count(),
+            ]);
+        } catch (\Throwable $exception) {
+            $activityLogs->logSystem('danger', 'Lr Track Failed', $exception->getMessage(), [
+                'exception' => get_class($exception),
+            ]);
+            throw $exception;
         }
-        $sendtobocsh = Tracking::where('status' ,'0')->get();
-        $save = $auth->sendbocsh($sendtobocsh);
-        Log::info('Lr Track was finished');
-        Log::info('------------------------------------------------------');
 
     }
 }

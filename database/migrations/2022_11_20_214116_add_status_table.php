@@ -14,10 +14,21 @@ class AddStatusTable extends Migration
     public function up()
     {
         Schema::table('vehicles', function (Blueprint $table) {
-            $table->string('mobileNo')->nullable()->after('vehicleNo');
-            $table->timestamp('expireDate')->nullable()->after('mobileNo');
-            $table->string('simProvider')->nullable()->after('expireDate');
-            $table->integer('vehicleStatus')->nullable()->after('simProvider');
+            if (!Schema::hasColumn('vehicles', 'mobileNo')) {
+                $table->string('mobileNo')->nullable()->after('vehicleNo');
+            }
+
+            if (!Schema::hasColumn('vehicles', 'expireDate')) {
+                $table->timestamp('expireDate')->nullable()->after('mobileNo');
+            }
+
+            if (!Schema::hasColumn('vehicles', 'simProvider')) {
+                $table->string('simProvider')->nullable()->after('expireDate');
+            }
+
+            if (!Schema::hasColumn('vehicles', 'vehicleStatus')) {
+                $table->integer('vehicleStatus')->nullable()->after('simProvider');
+            }
         });
     }
 

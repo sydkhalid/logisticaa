@@ -11,8 +11,13 @@
     <div class="col-lg-12 grid-margin stretch-card">
       <div class="card">
         <div class="card-body">
-          <h4 class="card-title">Application Settings</h4>
-          <p class="card-description">Connection values are still shared with the original application. This page only provides a new v2 editor.</p>
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <h4 class="card-title mb-1">Application Settings</h4>
+              <p class="card-description mb-0">Connection values are still shared with the original application. This page only provides a new v2 editor.</p>
+            </div>
+            <a href="{{ route('v2.integrations.index') }}" class="btn btn-outline-primary btn-sm">Open Health Check</a>
+          </div>
 
           <form method="POST" action="{{ route('v2.settings.update') }}" class="forms-sample">
             @csrf

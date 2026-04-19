@@ -2,6 +2,7 @@
 
 namespace App\Exceptions;
 
+use App\Services\ActivityLogService;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Throwable;
 
@@ -35,7 +36,15 @@ class Handler extends ExceptionHandler
     public function register()
     {
         $this->reportable(function (Throwable $e) {
-            //
+            try {
+                if (app()->bound('request') && !app()->runningInConsole()) {
+                    return;
+                }
+
+                app(ActivityLogService::class)->logThrowable($e, 'Unhandled Exception');
+            } catch (Throwable $loggingException) {
+                // Never break exception reporting because audit logging failed.
+            }
         });
     }
 }
