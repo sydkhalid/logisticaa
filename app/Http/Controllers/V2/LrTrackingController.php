@@ -48,7 +48,10 @@ class LrTrackingController extends BaseController
         return $this->render('lr-trackings.form', [
             'pageTitle' => 'Create LR Tracking',
             'tracking' => new Tracking(),
-            'vehicles' => Vehicle::query()->orderBy('vehicleNo')->get(),
+            'vehicles' => $this->eligibleVehiclesQuery()
+                ->orderByRaw('CASE WHEN vehicleStatus = 0 THEN 0 ELSE 1 END')
+                ->orderBy('vehicleNo')
+                ->get(),
             'lrStatuses' => array_values(array_diff(ExternalLogisticsService::lrStatuses(), ['Shipment Delivered'])),
             'truckTypes' => ExternalLogisticsService::truckTypes(),
             'truckTonnages' => ExternalLogisticsService::truckTonnages(),
@@ -80,6 +83,14 @@ class LrTrackingController extends BaseController
         ]);
 
         $vehicle = Vehicle::query()->findOrFail($validated['vehicle_id']);
+        $availability = $this->ensureVehicleAvailableForTracking($vehicle, $request);
+
+        if (!$availability['approved']) {
+            return back()
+                ->withInput()
+                ->with('message', $availability['message'])
+                ->with('message_type', 'warning');
+        }
 
         $alreadyExists = Tracking::query()
             ->where('lspId', $validated['lspId'])
@@ -121,7 +132,19 @@ class LrTrackingController extends BaseController
             $tracking->vehicle_status = $vehicle->vehicleStatus;
         }
 
-        $tracking->save();
+        try {
+            $tracking->save();
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'LR Tracking Create Failed', $request, [
+                'lrNumber' => $tracking->lrNumber,
+                'vehicleNo' => $tracking->vehicleNo,
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('message', $exception->getMessage())
+                ->with('message_type', 'danger');
+        }
 
         try {
             $this->integrations->syncTracking($tracking, $request->user());
@@ -177,7 +200,20 @@ class LrTrackingController extends BaseController
             $tracking->status = 0;
         }
 
-        $tracking->save();
+        try {
+            $tracking->save();
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'LR Tracking Update Failed', $request, [
+                'tracking_id' => $tracking->id,
+                'lrNumber' => $tracking->lrNumber,
+                'vehicleNo' => $tracking->vehicleNo,
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('message', $exception->getMessage())
+                ->with('message_type', 'danger');
+        }
 
         try {
             $this->integrations->syncTracking($tracking, $request->user());
@@ -224,22 +260,9 @@ class LrTrackingController extends BaseController
         ]);
 
         $vehicle = Vehicle::query()->findOrFail($validated['vehicle_id']);
-        if ((int) $vehicle->vehicleStatus !== 1) {
-            return response()->json([
-                'approved' => true,
-                'message' => 'Own vehicle is ready for LR tracking.',
-            ]);
-        }
-
-        if ((int) $vehicle->statusStop === 1) {
-            return response()->json([
-                'approved' => false,
-                'message' => 'SIM tracking is stopped for this market vehicle.',
-            ]);
-        }
 
         try {
-            $details = $this->integrations->findFleetVehicle($vehicle->vehicleNo, $request->user());
+            return response()->json($this->evaluateVehicleAvailability($vehicle, $request->user()));
         } catch (\Throwable $exception) {
             $this->logHandledException($exception, 'LR Vehicle Availability Check Failed', $request, [
                 'vehicle_id' => $vehicle->id,
@@ -250,13 +273,6 @@ class LrTrackingController extends BaseController
                 'message' => $exception->getMessage(),
             ], 503);
         }
-
-        return response()->json([
-            'approved' => (bool) $details,
-            'message' => $details
-                ? 'FleetX vehicle approval looks active.'
-                : 'Vehicle is not yet available from FleetX live analytics.',
-        ]);
     }
 
     private function trackingData(Request $request, bool $completed)
@@ -301,5 +317,62 @@ class LrTrackingController extends BaseController
                 ];
             }
         );
+    }
+
+    private function eligibleVehiclesQuery()
+    {
+        return Vehicle::query()->where(function ($builder) {
+            $builder->where('vehicleStatus', 0)
+                ->orWhere(function ($market) {
+                    $market->where('vehicleStatus', 1)
+                        ->where(function ($status) {
+                            $status->whereNull('statusStop')
+                                ->orWhere('statusStop', 0);
+                        });
+                });
+        });
+    }
+
+    private function ensureVehicleAvailableForTracking(Vehicle $vehicle, Request $request)
+    {
+        try {
+            return $this->evaluateVehicleAvailability($vehicle, $request->user());
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'LR Vehicle Availability Check Failed', $request, [
+                'vehicle_id' => $vehicle->id,
+                'vehicleNo' => $vehicle->vehicleNo,
+            ], 'warning');
+
+            return [
+                'approved' => false,
+                'message' => $exception->getMessage(),
+            ];
+        }
+    }
+
+    private function evaluateVehicleAvailability(Vehicle $vehicle, $user)
+    {
+        if ((int) $vehicle->vehicleStatus !== 1) {
+            return [
+                'approved' => true,
+                'message' => 'Own vehicle is ready for LR tracking.',
+            ];
+        }
+
+        if ((int) $vehicle->statusStop === 1) {
+            return [
+                'approved' => false,
+                'message' => 'SIM tracking is stopped for this market vehicle.',
+            ];
+        }
+
+        $details = $this->integrations->findFleetVehicle($vehicle->vehicleNo, $user);
+
+        return [
+            'approved' => (bool) $details,
+            'message' => $details
+                ? 'FleetX vehicle approval looks active.'
+                : 'Vehicle is not yet available from FleetX live analytics.',
+        ];
     }
 }

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\V2;
 
+use App\Models\Tracking;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class VehicleController extends BaseController
@@ -66,6 +68,10 @@ class VehicleController extends BaseController
 
     public function store(Request $request)
     {
+        $request->merge([
+            'vehicleNo' => strtoupper(trim((string) $request->input('vehicleNo'))),
+        ]);
+
         $validated = $request->validate([
             'vehicleNo' => ['required', 'string', Rule::unique('vehicles', 'vehicleNo')],
         ]);
@@ -92,8 +98,9 @@ class VehicleController extends BaseController
             ->with('message_type', 'success');
     }
 
-    public function show(Vehicle $vehicle)
+    public function show($vehicle)
     {
+        $vehicle = $this->resolveVehicle($vehicle);
         $location = null;
         $warning = null;
 
@@ -115,8 +122,10 @@ class VehicleController extends BaseController
         ]);
     }
 
-    public function edit(Vehicle $vehicle)
+    public function edit($vehicle)
     {
+        $vehicle = $this->resolveVehicle($vehicle);
+
         return $this->render('vehicles.form', [
             'pageTitle' => 'Edit Own Vehicle',
             'vehicle' => $vehicle,
@@ -125,8 +134,13 @@ class VehicleController extends BaseController
         ]);
     }
 
-    public function update(Request $request, Vehicle $vehicle)
+    public function update(Request $request, $vehicle)
     {
+        $vehicle = $this->resolveVehicle($vehicle);
+        $request->merge([
+            'vehicleNo' => strtoupper(trim((string) $request->input('vehicleNo'))),
+        ]);
+
         $validated = $request->validate([
             'vehicleNo' => [
                 'required',
@@ -136,8 +150,19 @@ class VehicleController extends BaseController
         ]);
 
         try {
-            $vehicle->vehicleNo = strtoupper(trim($validated['vehicleNo']));
-            $vehicle->save();
+            $oldVehicleNo = $vehicle->vehicleNo;
+            $newVehicleNo = $validated['vehicleNo'];
+
+            DB::transaction(function () use ($vehicle, $oldVehicleNo, $newVehicleNo) {
+                $vehicle->vehicleNo = $newVehicleNo;
+                $vehicle->save();
+
+                if ($oldVehicleNo !== $newVehicleNo) {
+                    Tracking::query()
+                        ->where('vehicleNo', $oldVehicleNo)
+                        ->update(['vehicleNo' => $newVehicleNo]);
+                }
+            });
         } catch (\Throwable $exception) {
             $this->logHandledException($exception, 'Own Vehicle Update Failed', $request, [
                 'vehicle_id' => $vehicle->id,
@@ -155,8 +180,16 @@ class VehicleController extends BaseController
             ->with('message_type', 'success');
     }
 
-    public function destroy(Request $request, Vehicle $vehicle)
+    public function destroy(Request $request, $vehicle)
     {
+        $vehicle = $this->resolveVehicle($vehicle);
+
+        if ($this->hasActiveTrackings($vehicle->vehicleNo)) {
+            return redirect()->route('v2.vehicles.index')
+                ->with('message', 'This own vehicle has an active LR tracking record and cannot be removed yet.')
+                ->with('message_type', 'warning');
+        }
+
         try {
             $vehicle->delete();
         } catch (\Throwable $exception) {
@@ -173,5 +206,21 @@ class VehicleController extends BaseController
         return redirect()->route('v2.vehicles.index')
             ->with('message', 'Own vehicle removed successfully.')
             ->with('message_type', 'success');
+    }
+
+    private function resolveVehicle($vehicle)
+    {
+        return Vehicle::query()
+            ->where('vehicleStatus', 0)
+            ->where('id', $vehicle)
+            ->firstOrFail();
+    }
+
+    private function hasActiveTrackings(string $vehicleNo)
+    {
+        return Tracking::query()
+            ->where('vehicleNo', $vehicleNo)
+            ->where('status', 0)
+            ->exists();
     }
 }

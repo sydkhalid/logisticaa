@@ -88,7 +88,20 @@ class WeightCorrectionController extends BaseController
         $weight->length = $validated['length'];
         $weight->breadth = $validated['breadth'];
         $weight->height = $validated['height'];
-        $weight->save();
+
+        try {
+            $weight->save();
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Weight Correction Create Failed', $request, [
+                'lrNumber' => $weight->lrNumber,
+                'lspId' => $weight->lspId,
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('message', $exception->getMessage())
+                ->with('message_type', 'danger');
+        }
 
         try {
             $this->integrations->syncWeightCorrection($weight, false, $request->user());
@@ -133,7 +146,21 @@ class WeightCorrectionController extends BaseController
         $weight->length = $validated['length'];
         $weight->breadth = $validated['breadth'];
         $weight->height = $validated['height'];
-        $weight->save();
+
+        try {
+            $weight->save();
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Weight Correction Update Failed', $request, [
+                'weight_id' => $weight->id,
+                'lrNumber' => $weight->lrNumber,
+                'lspId' => $weight->lspId,
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('message', $exception->getMessage())
+                ->with('message_type', 'danger');
+        }
 
         try {
             $this->integrations->syncWeightCorrection($weight, true, $request->user());

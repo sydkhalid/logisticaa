@@ -4,7 +4,7 @@
       {{ ($settings && $settings->copyright) ? $settings->copyright : ('Copyright ' . date('Y')) }}
     </span>
     <span class="float-none float-sm-right d-block mt-1 mt-sm-0 text-center">
-      {{ $appName }} v2
+      {{ $appName }}
     </span>
   </div>
 </footer>

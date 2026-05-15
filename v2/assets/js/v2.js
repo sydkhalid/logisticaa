@@ -1,6 +1,8 @@
 (function (window, document) {
   var loaderElement = null;
   var activeAjaxRequests = 0;
+  var activeFetchRequests = 0;
+  var pageTransitionActive = false;
 
   function getLoaderElement() {
     if (!loaderElement) {
@@ -52,6 +54,28 @@
     element.classList.remove('is-visible');
     element.setAttribute('hidden', 'hidden');
     document.body.classList.remove('v2-loading');
+  }
+
+  function hasPendingLoaderActivity() {
+    return activeAjaxRequests > 0 || activeFetchRequests > 0 || pageTransitionActive;
+  }
+
+  function maybeHideLoader() {
+    if (!hasPendingLoaderActivity()) {
+      hideLoader();
+    }
+  }
+
+  function beginPageTransition(title, subtitle) {
+    pageTransitionActive = true;
+    showLoader(title || 'Loading page', subtitle || 'Opening the next view.');
+  }
+
+  function resetLoaderState() {
+    activeAjaxRequests = 0;
+    activeFetchRequests = 0;
+    pageTransitionActive = false;
+    hideLoader();
   }
 
   function swalIcon(type) {
@@ -148,14 +172,10 @@
       })
       .ajaxComplete(function () {
         activeAjaxRequests = Math.max(0, activeAjaxRequests - 1);
-
-        if (activeAjaxRequests === 0) {
-          hideLoader();
-        }
+        maybeHideLoader();
       })
       .ajaxError(function (event, xhr) {
-        activeAjaxRequests = Math.max(0, activeAjaxRequests - 1);
-        hideLoader();
+        maybeHideLoader();
 
         if (xhr && xhr.status >= 500) {
           fireAlert({
@@ -167,17 +187,159 @@
       });
   }
 
+  function readHeaderValue(headers, name) {
+    var lowerName = name.toLowerCase();
+    var index;
+
+    if (!headers) {
+      return null;
+    }
+
+    if (typeof headers.get === 'function') {
+      return headers.get(name);
+    }
+
+    if (headers[name]) {
+      return headers[name];
+    }
+
+    if (headers[lowerName]) {
+      return headers[lowerName];
+    }
+
+    if (Object.prototype.toString.call(headers) === '[object Array]') {
+      for (index = 0; index < headers.length; index += 1) {
+        if (headers[index] && headers[index][0] && String(headers[index][0]).toLowerCase() === lowerName) {
+          return headers[index][1];
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function initFetchLoader() {
+    var originalFetch;
+
+    if (!window.fetch) {
+      return;
+    }
+
+    originalFetch = window.fetch;
+    window.fetch = function (input, init) {
+      var requestInit = init || {};
+      var skipLoader = requestInit.skipLoader === true;
+
+      if (!skipLoader && typeof Request !== 'undefined' && input instanceof Request) {
+        skipLoader = readHeaderValue(input.headers, 'X-Skip-Loader') === '1';
+      }
+
+      if (!skipLoader) {
+        skipLoader = readHeaderValue(requestInit.headers, 'X-Skip-Loader') === '1';
+      }
+
+      if (skipLoader) {
+        return originalFetch.apply(window, arguments);
+      }
+
+      activeFetchRequests += 1;
+      showLoader('Loading data', 'Fetching the latest records.');
+
+      return originalFetch.apply(window, arguments).then(function (response) {
+        activeFetchRequests = Math.max(0, activeFetchRequests - 1);
+        maybeHideLoader();
+        return response;
+      }, function (error) {
+        activeFetchRequests = Math.max(0, activeFetchRequests - 1);
+        maybeHideLoader();
+        throw error;
+      });
+    };
+  }
+
+  function shouldHandleLinkNavigation(link, event) {
+    var href = link.getAttribute('href');
+    var target = link.getAttribute('target');
+    var destination;
+
+    if (!href || href === '#' || href.indexOf('javascript:') === 0) {
+      return false;
+    }
+
+    if (href.indexOf('mailto:') === 0 || href.indexOf('tel:') === 0) {
+      return false;
+    }
+
+    if (link.getAttribute('data-skip-loader') === '1' || link.hasAttribute('download')) {
+      return false;
+    }
+
+    if (target && target !== '_self') {
+      return false;
+    }
+
+    if (event && (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0)) {
+      return false;
+    }
+
+    try {
+      destination = new window.URL(link.href, window.location.href);
+    } catch (error) {
+      return false;
+    }
+
+    if (destination.origin !== window.location.origin) {
+      return false;
+    }
+
+    if (
+      destination.pathname === window.location.pathname &&
+      destination.search === window.location.search &&
+      destination.hash
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function initLinkLoader() {
+    document.addEventListener('click', function (event) {
+      var link = event.target.closest ? event.target.closest('a[href]') : null;
+
+      if (!link || event.defaultPrevented || !shouldHandleLinkNavigation(link, event)) {
+        return;
+      }
+
+      window.setTimeout(function () {
+        if (!event.defaultPrevented) {
+          beginPageTransition(
+            link.getAttribute('data-loader-title') || 'Loading page',
+            link.getAttribute('data-loader-subtitle') || 'Opening the next view.'
+          );
+        }
+      }, 0);
+    });
+  }
+
   function initFormLoader() {
     document.addEventListener('submit', function (event) {
       var form = event.target;
+      var method;
+      var title;
+      var subtitle;
 
       if (!form || form.tagName !== 'FORM') {
         return;
       }
 
+      method = String(form.getAttribute('method') || 'GET').toUpperCase();
+      title = form.getAttribute('data-loader-title') || (method === 'GET' ? 'Loading page' : 'Saving changes');
+      subtitle = form.getAttribute('data-loader-subtitle') || (method === 'GET' ? 'Preparing the next view.' : 'Submitting your request.');
+
       window.setTimeout(function () {
         if (!event.defaultPrevented && form.getAttribute('data-skip-loader') !== '1') {
-          showLoader('Saving changes', 'Submitting your request.');
+          beginPageTransition(title, subtitle);
         }
       }, 0);
     });
@@ -270,17 +432,28 @@
     return false;
   }
 
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted) {
+      resetLoaderState();
+    }
+  });
+
   document.addEventListener('DOMContentLoaded', function () {
+    resetLoaderState();
     initGlobalAjaxHandlers();
+    initFetchLoader();
+    initLinkLoader();
     initFormLoader();
     readFlashMessages();
   });
 
   window.V2 = {
+    beginPageTransition: beginPageTransition,
     confirmDelete: confirmDelete,
     fireAlert: fireAlert,
     hideLoader: hideLoader,
     initDataTable: initDataTable,
+    resetLoaderState: resetLoaderState,
     showLoader: showLoader
   };
 })(window, document);

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\V2;
 
+use App\Models\Tracking;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class MarketVehicleController extends BaseController
@@ -81,17 +83,27 @@ class MarketVehicleController extends BaseController
 
     public function store(Request $request)
     {
+        $this->normalizePayload($request);
         $validated = $this->validatePayload($request);
         $expireDate = $this->formatDateTime($validated['expireDate']);
 
         try {
             $this->integrations->registerSimTracking([
                 'mobileNumber' => $validated['mobileNo'],
-                'vehicleNumber' => strtoupper(trim($validated['vehicleNo'])),
+                'vehicleNumber' => $validated['vehicleNo'],
                 'expiryDate' => $expireDate,
                 'simProvider' => $validated['simProvider'],
                 'pingFrequency' => '3600',
             ], $request->user());
+
+            $vehicle = new Vehicle();
+            $vehicle->vehicleNo = $validated['vehicleNo'];
+            $vehicle->mobileNo = $validated['mobileNo'];
+            $vehicle->expireDate = $expireDate;
+            $vehicle->simProvider = $validated['simProvider'];
+            $vehicle->vehicleStatus = 1;
+            $vehicle->statusStop = 0;
+            $vehicle->save();
         } catch (\Throwable $exception) {
             $this->logHandledException($exception, 'Market Vehicle Registration Failed', $request, [
                 'vehicleNo' => $validated['vehicleNo'],
@@ -103,22 +115,14 @@ class MarketVehicleController extends BaseController
                 ->with('message_type', 'danger');
         }
 
-        $vehicle = new Vehicle();
-        $vehicle->vehicleNo = strtoupper(trim($validated['vehicleNo']));
-        $vehicle->mobileNo = $validated['mobileNo'];
-        $vehicle->expireDate = $expireDate;
-        $vehicle->simProvider = $validated['simProvider'];
-        $vehicle->vehicleStatus = 1;
-        $vehicle->statusStop = 0;
-        $vehicle->save();
-
         return redirect()->route('v2.market-vehicles.index')
             ->with('message', 'Market vehicle added successfully.')
             ->with('message_type', 'success');
     }
 
-    public function show(Vehicle $vehicle)
+    public function show($vehicle)
     {
+        $vehicle = $this->resolveVehicle($vehicle);
         $details = null;
         $warning = null;
 
@@ -140,8 +144,10 @@ class MarketVehicleController extends BaseController
         ]);
     }
 
-    public function edit(Vehicle $vehicle)
+    public function edit($vehicle)
     {
+        $vehicle = $this->resolveVehicle($vehicle);
+
         return $this->render('market-vehicles.form', [
             'pageTitle' => 'Update Market Vehicle',
             'vehicle' => $vehicle,
@@ -150,19 +156,60 @@ class MarketVehicleController extends BaseController
         ]);
     }
 
-    public function update(Request $request, Vehicle $vehicle)
+    public function update(Request $request, $vehicle)
     {
+        $vehicle = $this->resolveVehicle($vehicle);
+        $this->normalizePayload($request);
         $validated = $this->validatePayload($request, $vehicle);
         $expireDate = $this->formatDateTime($validated['expireDate']);
+        $oldVehicleNo = $vehicle->vehicleNo;
+        $oldMobileNo = trim((string) $vehicle->mobileNo);
+        $oldSimProvider = strtoupper(trim((string) $vehicle->simProvider));
+
+        $simChanged = $oldMobileNo !== $validated['mobileNo']
+            || $oldSimProvider !== $validated['simProvider'];
 
         try {
+            if (
+                $simChanged
+                && (int) $vehicle->statusStop !== 1
+                && $oldMobileNo !== ''
+                && $oldSimProvider !== ''
+            ) {
+                try {
+                    $this->integrations->stopSimTracking($oldMobileNo, $oldSimProvider, $request->user());
+                } catch (\Throwable $exception) {
+                    $this->logHandledException($exception, 'Market Vehicle Old SIM Cleanup Failed', $request, [
+                        'vehicle_id' => $vehicle->id,
+                        'vehicleNo' => $oldVehicleNo,
+                        'mobileNo' => $oldMobileNo,
+                        'simProvider' => $oldSimProvider,
+                    ], 'warning');
+                }
+            }
+
             $this->integrations->registerSimTracking([
                 'mobileNumber' => $validated['mobileNo'],
-                'vehicleNumber' => strtoupper(trim($validated['vehicleNo'])),
+                'vehicleNumber' => $validated['vehicleNo'],
                 'expiryDate' => $expireDate,
                 'simProvider' => $validated['simProvider'],
                 'pingFrequency' => '3600',
             ], $request->user());
+
+            DB::transaction(function () use ($vehicle, $validated, $expireDate, $oldVehicleNo) {
+                $vehicle->vehicleNo = $validated['vehicleNo'];
+                $vehicle->mobileNo = $validated['mobileNo'];
+                $vehicle->expireDate = $expireDate;
+                $vehicle->simProvider = $validated['simProvider'];
+                $vehicle->statusStop = 0;
+                $vehicle->save();
+
+                if ($oldVehicleNo !== $validated['vehicleNo']) {
+                    Tracking::query()
+                        ->where('vehicleNo', $oldVehicleNo)
+                        ->update(['vehicleNo' => $validated['vehicleNo']]);
+                }
+            });
         } catch (\Throwable $exception) {
             $this->logHandledException($exception, 'Market Vehicle Update Failed', $request, [
                 'vehicle_id' => $vehicle->id,
@@ -174,19 +221,15 @@ class MarketVehicleController extends BaseController
                 ->with('message_type', 'danger');
         }
 
-        $vehicle->vehicleNo = strtoupper(trim($validated['vehicleNo']));
-        $vehicle->mobileNo = $validated['mobileNo'];
-        $vehicle->expireDate = $expireDate;
-        $vehicle->simProvider = $validated['simProvider'];
-        $vehicle->save();
-
         return redirect()->route('v2.market-vehicles.index')
             ->with('message', 'Market vehicle updated successfully.')
             ->with('message_type', 'success');
     }
 
-    public function status(Request $request, Vehicle $vehicle)
+    public function status(Request $request, $vehicle)
     {
+        $vehicle = $this->resolveVehicle($vehicle);
+
         try {
             $details = $this->integrations->findFleetVehicle($vehicle->vehicleNo, $request->user());
         } catch (\Throwable $exception) {
@@ -206,16 +249,26 @@ class MarketVehicleController extends BaseController
             ->with('message_type', $details ? 'success' : 'warning');
     }
 
-    public function stopTracking(Request $request, Vehicle $vehicle)
+    public function stopTracking(Request $request, $vehicle)
     {
+        $vehicle = $this->resolveVehicle($vehicle);
+
         if ((int) $vehicle->statusStop === 1) {
             return back()
                 ->with('message', 'SIM tracking is already stopped for this vehicle.')
                 ->with('message_type', 'warning');
         }
 
+        if ($this->hasActiveTrackings($vehicle->vehicleNo)) {
+            return back()
+                ->with('message', 'This market vehicle has an active LR tracking record. Complete the LR before stopping SIM tracking.')
+                ->with('message_type', 'warning');
+        }
+
         try {
             $this->integrations->stopSimTracking($vehicle->mobileNo, $vehicle->simProvider, $request->user());
+            $vehicle->statusStop = 1;
+            $vehicle->save();
         } catch (\Throwable $exception) {
             $this->logHandledException($exception, 'Market Vehicle Stop Tracking Failed', $request, [
                 'vehicle_id' => $vehicle->id,
@@ -227,17 +280,30 @@ class MarketVehicleController extends BaseController
                 ->with('message_type', 'danger');
         }
 
-        $vehicle->statusStop = 1;
-        $vehicle->save();
-
         return back()
             ->with('message', 'SIM tracking stopped successfully.')
             ->with('message_type', 'success');
     }
 
-    public function destroy(Request $request, Vehicle $vehicle)
+    public function destroy(Request $request, $vehicle)
     {
+        $vehicle = $this->resolveVehicle($vehicle);
+
+        if ($this->hasActiveTrackings($vehicle->vehicleNo)) {
+            return redirect()->route('v2.market-vehicles.index')
+                ->with('message', 'This market vehicle has an active LR tracking record and cannot be removed yet.')
+                ->with('message_type', 'warning');
+        }
+
         try {
+            if (
+                (int) $vehicle->statusStop !== 1
+                && trim((string) $vehicle->mobileNo) !== ''
+                && trim((string) $vehicle->simProvider) !== ''
+            ) {
+                $this->integrations->stopSimTracking($vehicle->mobileNo, $vehicle->simProvider, $request->user());
+            }
+
             $vehicle->delete();
         } catch (\Throwable $exception) {
             $this->logHandledException($exception, 'Market Vehicle Delete Failed', $request, [
@@ -267,5 +333,30 @@ class MarketVehicleController extends BaseController
             'expireDate' => ['required', 'date'],
             'simProvider' => ['required', 'string'],
         ]);
+    }
+
+    private function normalizePayload(Request $request): void
+    {
+        $request->merge([
+            'vehicleNo' => strtoupper(trim((string) $request->input('vehicleNo'))),
+            'mobileNo' => trim((string) $request->input('mobileNo')),
+            'simProvider' => strtoupper(trim((string) $request->input('simProvider'))),
+        ]);
+    }
+
+    private function resolveVehicle($vehicle)
+    {
+        return Vehicle::query()
+            ->where('vehicleStatus', 1)
+            ->where('id', $vehicle)
+            ->firstOrFail();
+    }
+
+    private function hasActiveTrackings(string $vehicleNo)
+    {
+        return Tracking::query()
+            ->where('vehicleNo', $vehicleNo)
+            ->where('status', 0)
+            ->exists();
     }
 }

@@ -14,7 +14,7 @@
           <div class="d-flex justify-content-between align-items-start mb-3">
             <div>
               <h4 class="card-title mb-1">Application Settings</h4>
-              <p class="card-description mb-0">Connection values are still shared with the original application. This page only provides a new v2 editor.</p>
+              <p class="card-description mb-0">Manage the shared connection values used across the logistics workflow.</p>
             </div>
             <a href="{{ route('v2.integrations.index') }}" class="btn btn-outline-primary btn-sm">Open Health Check</a>
           </div>

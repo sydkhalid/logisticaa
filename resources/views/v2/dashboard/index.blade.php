@@ -2,72 +2,269 @@
 
 @php
   $breadcrumbs = [];
-  $analyticsChart = [
-    $analytics['runningVehicles'] ?? 0,
-    $analytics['parkedVehicles'] ?? 0,
-    $analytics['idleVehicles'] ?? 0,
-    $analytics['disconnectedVehicles'] ?? 0,
-    $analytics['unreachableVehicles'] ?? 0,
+  $formatDate = function ($value, $format = 'd M, h:i A') {
+    if (!$value) {
+      return '-';
+    }
+
+    $date = $value instanceof \DateTimeInterface ? $value : date_create((string) $value);
+
+    return $date ? $date->format($format) : (string) $value;
+  };
+  $severityGroups = [
+    'critical' => ['label' => 'Critical', 'class' => 'dashboard-insight-group--critical', 'empty' => 'No critical issues right now.'],
+    'warning' => ['label' => 'Warning', 'class' => 'dashboard-insight-group--warning', 'empty' => 'No warning backlog right now.'],
+    'info' => ['label' => 'Info', 'class' => 'dashboard-insight-group--info', 'empty' => 'No additional info items right now.'],
+  ];
+  $alertTagClasses = [
+    'warning' => 'dashboard-alert-tag dashboard-alert-tag--warning',
+    'danger' => 'dashboard-alert-tag dashboard-alert-tag--critical',
+    'emergency' => 'dashboard-alert-tag dashboard-alert-tag--critical',
+  ];
+  $summaryCards = [
+    [
+      'label' => 'Total LR',
+      'value' => $summary['totalTrackings'],
+      'icon' => 'mdi-file-document-multiple-outline',
+      'meta' => 'All project LR records',
+      'accent' => 'dashboard-summary-card--slate',
+    ],
+    [
+      'label' => 'Active LR',
+      'value' => $summary['activeTrackingCount'],
+      'icon' => 'mdi-truck-fast-outline',
+      'meta' => $summary['delayedTrackingCount'] . ' delayed shipments',
+      'accent' => 'dashboard-summary-card--teal',
+    ],
+    [
+      'label' => 'Closed LR',
+      'value' => $summary['closedTrackingCount'],
+      'icon' => 'mdi-check-decagram-outline',
+      'meta' => $summary['epodCount'] . ' EPOD uploads recorded',
+      'accent' => 'dashboard-summary-card--blue',
+    ],
+    [
+      'label' => 'Open Issues',
+      'value' => $summary['issueCount'],
+      'icon' => 'mdi-alert-circle-outline',
+      'meta' => $summary['pendingEpodCount'] . ' pending EPOD | ' . $summary['locationGapCount'] . ' location gaps',
+      'accent' => 'dashboard-summary-card--amber',
+    ],
+  ];
+  $todayMetrics = [
+    ['label' => 'Trackings Created', 'value' => $today['trackingsCreated'], 'icon' => 'mdi-plus-box-outline'],
+    ['label' => 'EPOD Uploaded', 'value' => $today['epodsUploaded'], 'icon' => 'mdi-cloud-upload-outline'],
+    ['label' => 'Weight Corrections', 'value' => $today['weightCorrections'], 'icon' => 'mdi-scale-bathroom'],
+    ['label' => 'Warnings Logged', 'value' => $today['warningsLogged'], 'icon' => 'mdi-alert-outline'],
   ];
 @endphp
 
 @section('content')
+  <div class="dashboard-summary-strip">
+    @foreach ($summaryCards as $card)
+      <div class="dashboard-summary-card {{ $card['accent'] }}">
+        <div class="dashboard-summary-card__icon">
+          <i class="mdi {{ $card['icon'] }}"></i>
+        </div>
+        <div class="dashboard-summary-card__body">
+          <span class="dashboard-summary-card__label">{{ $card['label'] }}</span>
+          <strong class="dashboard-summary-card__value">{{ $card['value'] }}</strong>
+          <small class="dashboard-summary-card__meta">{{ $card['meta'] }}</small>
+        </div>
+      </div>
+    @endforeach
+  </div>
+
   <div class="row">
-    <div class="col-md-6 grid-margin stretch-card">
-      <div class="card tale-bg">
-        <div class="card-people mt-auto">
-          <img src="{{ asset('v2/assets/images/dashboard/people.svg') }}" alt="people">
-          <div class="weather-info">
-            <div class="d-flex">
+    <div class="col-xl-8 grid-margin stretch-card">
+      <div class="dashboard-main-stack">
+        <div class="card dashboard-surface">
+          <div class="card-body">
+            <div class="dashboard-card-head">
               <div>
-                <h2 class="mb-0 font-weight-normal">{{ $stats['vehicleCount'] }}</h2>
+                <p class="card-title mb-1">Shipment Flow</p>
+                <p class="card-description mb-0">Current shipment mix across active, delayed, delivered, and EPOD-closed LR records.</p>
               </div>
-              <div class="ms-2">
-                <h4 class="location font-weight-normal">Vehicles</h4>
-                <h6 class="font-weight-normal">Live project footprint</h6>
+              <a href="{{ route('v2.lr-trackings.index') }}" class="btn btn-outline-primary btn-sm">Open LR</a>
+            </div>
+
+            @if ($hasShipmentData)
+              <div class="dashboard-flow-layout">
+                <div class="dashboard-flow-chart">
+                  <canvas id="shipment-mix-chart" height="190"></canvas>
+                </div>
+                <div class="dashboard-flow-legend">
+                  @foreach ($shipmentSegments as $segment)
+                    <div class="dashboard-flow-legend__item">
+                      <div class="dashboard-flow-legend__label">
+                        <span class="dashboard-flow-legend__dot" style="background: {{ $segment['color'] }}"></span>
+                        <span>{{ $segment['label'] }}</span>
+                      </div>
+                      <div class="dashboard-flow-legend__metrics">
+                        <strong>{{ $segment['value'] }}</strong>
+                        <small>{{ $segment['percentage'] }}%</small>
+                      </div>
+                    </div>
+                  @endforeach
+                </div>
+              </div>
+            @else
+              <div class="dashboard-empty-graph">
+                <i class="mdi mdi-chart-donut-variant"></i>
+                <strong>No Data Available</strong>
+                <p class="mb-0">Shipment flow will appear here when LR records start moving through the workflow.</p>
+              </div>
+            @endif
+          </div>
+        </div>
+
+        <div class="card dashboard-surface">
+          <div class="card-body">
+            <div class="dashboard-card-head">
+              <div>
+                <p class="card-title mb-1">7-Day Throughput</p>
+                <p class="card-description mb-0">Daily LR creation, EPOD closure, and weight correction activity over the last seven days.</p>
+              </div>
+              <a href="{{ route('v2.reports.index', ['from' => $reportWindows['week']['from'], 'to' => $reportWindows['week']['to']]) }}" class="btn btn-outline-primary btn-sm">Weekly Report</a>
+            </div>
+
+            <div class="dashboard-throughput-metrics">
+              <div class="dashboard-throughput-metric">
+                <span>Trackings</span>
+                <strong>{{ array_sum($trend['trackings']) }}</strong>
+              </div>
+              <div class="dashboard-throughput-metric">
+                <span>EPOD</span>
+                <strong>{{ array_sum($trend['epods']) }}</strong>
+              </div>
+              <div class="dashboard-throughput-metric">
+                <span>Weights</span>
+                <strong>{{ $weightsEnabled ? array_sum($trend['weights']) : 0 }}</strong>
               </div>
             </div>
+
+            @if ($hasTrendData)
+              <div class="dashboard-chart-shell dashboard-chart-shell--line">
+                <canvas id="throughput-trend-chart" height="124"></canvas>
+              </div>
+            @else
+              <div class="dashboard-empty-graph dashboard-empty-graph--compact">
+                <i class="mdi mdi-chart-line"></i>
+                <strong>No Data Available</strong>
+                <p class="mb-0">This graph will populate when new LR, EPOD, or weight records are created.</p>
+              </div>
+            @endif
           </div>
         </div>
       </div>
     </div>
-    <div class="col-md-6 grid-margin transparent">
-      <div class="row">
-        <div class="col-md-6 mb-4 stretch-card transparent">
-          <div class="card card-tale">
-            <div class="card-body">
-              <p class="mb-4">Active LR</p>
-              <p class="fs-30 mb-2">{{ $stats['activeTrackingCount'] }}</p>
-              <p>Open tracking records</p>
+
+    <div class="col-xl-4 grid-margin stretch-card">
+      <div class="dashboard-side-stack">
+        <div class="card dashboard-surface dashboard-surface--highlight">
+          <div class="card-body">
+            <div class="dashboard-card-head">
+              <div>
+                <p class="card-title mb-1">Today Summary</p>
+                <p class="card-description mb-0">Operational movement for the current day, with live completion and utilization signals.</p>
+              </div>
+              <a href="{{ route('v2.reports.index', ['from' => $reportWindows['today']['from'], 'to' => $reportWindows['today']['to']]) }}" class="btn btn-light btn-sm">Today Report</a>
+            </div>
+
+            <div class="dashboard-summary-panel-grid">
+              @foreach ($todayMetrics as $metric)
+                <div class="dashboard-summary-panel-item">
+                  <span class="dashboard-summary-panel-item__icon">
+                    <i class="mdi {{ $metric['icon'] }}"></i>
+                  </span>
+                  <div>
+                    <span class="dashboard-summary-panel-item__label">{{ $metric['label'] }}</span>
+                    <strong class="dashboard-summary-panel-item__value">{{ $metric['value'] }}</strong>
+                  </div>
+                </div>
+              @endforeach
+            </div>
+
+            <div class="dashboard-progress-list">
+              <div class="dashboard-progress-item">
+                <div class="dashboard-progress-item__head">
+                  <span>Completion Rate</span>
+                  <strong>{{ $performance['completionRate'] }}%</strong>
+                </div>
+                <div class="dashboard-progress-item__track">
+                  <span class="dashboard-progress-item__bar" style="width: {{ min($performance['completionRate'], 100) }}%"></span>
+                </div>
+              </div>
+              <div class="dashboard-progress-item">
+                <div class="dashboard-progress-item__head">
+                  <span>EPOD Closure</span>
+                  <strong>{{ $performance['epodClosureRate'] }}%</strong>
+                </div>
+                <div class="dashboard-progress-item__track">
+                  <span class="dashboard-progress-item__bar dashboard-progress-item__bar--amber" style="width: {{ min($performance['epodClosureRate'], 100) }}%"></span>
+                </div>
+              </div>
+              <div class="dashboard-progress-item">
+                <div class="dashboard-progress-item__head">
+                  <span>Fleet Utilization</span>
+                  <strong>{{ $performance['fleetUtilization'] }}%</strong>
+                </div>
+                <div class="dashboard-progress-item__track">
+                  <span class="dashboard-progress-item__bar dashboard-progress-item__bar--blue" style="width: {{ min($performance['fleetUtilization'], 100) }}%"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="dashboard-inline-metrics">
+              <div class="dashboard-inline-metric">
+                <span>Own Fleet</span>
+                <strong>{{ $summary['ownVehicles'] }}</strong>
+              </div>
+              <div class="dashboard-inline-metric">
+                <span>Market Active</span>
+                <strong>{{ $summary['activeMarketVehicles'] }}</strong>
+              </div>
+              <div class="dashboard-inline-metric">
+                <span>Market Stopped</span>
+                <strong>{{ $summary['stoppedMarketVehicles'] }}</strong>
+              </div>
             </div>
           </div>
         </div>
-        <div class="col-md-6 mb-4 stretch-card transparent">
-          <div class="card card-dark-blue">
-            <div class="card-body">
-              <p class="mb-4">Completed LR</p>
-              <p class="fs-30 mb-2">{{ $stats['completedTrackingCount'] }}</p>
-              <p>Delivered and EPOD-synced shipments</p>
+
+        <div class="card dashboard-surface">
+          <div class="card-body">
+            <div class="dashboard-card-head">
+              <div>
+                <p class="card-title mb-1">Insights</p>
+                <p class="card-description mb-0">Prioritized operating signals grouped by severity so urgent work stands out first.</p>
+              </div>
+              <a href="{{ route('v2.logs.index') }}" class="btn btn-outline-primary btn-sm">System Logs</a>
             </div>
-          </div>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col-md-6 mb-4 mb-lg-0 stretch-card transparent">
-          <div class="card card-light-blue">
-            <div class="card-body">
-              <p class="mb-4">Uploaded EPOD</p>
-              <p class="fs-30 mb-2">{{ $stats['epodCount'] }}</p>
-              <p>Completed document syncs</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-6 stretch-card transparent">
-          <div class="card card-light-danger">
-            <div class="card-body">
-              <p class="mb-4">Fleet Total</p>
-              <p class="fs-30 mb-2">{{ $analytics['totalVehicles'] ?? 0 }}</p>
-              <p>FleetX live analytics</p>
+
+            <div class="dashboard-insight-groups">
+              @foreach ($severityGroups as $key => $group)
+                <div class="dashboard-insight-group {{ $group['class'] }}">
+                  <div class="dashboard-insight-group__head">
+                    <span>{{ $group['label'] }}</span>
+                    <strong>{{ count($insightGroups[$key]) }}</strong>
+                  </div>
+
+                  @if (!empty($insightGroups[$key]))
+                    <div class="dashboard-insight-list">
+                      @foreach ($insightGroups[$key] as $insight)
+                        <a href="{{ $insight['action_url'] }}" class="dashboard-insight-card">
+                          <strong class="dashboard-insight-card__title">{{ $insight['title'] }}</strong>
+                          <p class="mb-0">{{ $insight['description'] }}</p>
+                          <span class="dashboard-insight-card__link">{{ $insight['action_label'] }}</span>
+                        </a>
+                      @endforeach
+                    </div>
+                  @else
+                    <div class="dashboard-insight-empty">{{ $group['empty'] }}</div>
+                  @endif
+                </div>
+              @endforeach
             </div>
           </div>
         </div>
@@ -76,31 +273,57 @@
   </div>
 
   <div class="row">
-    <div class="col-md-8 grid-margin stretch-card">
-      <div class="card">
+    <div class="col-12 grid-margin stretch-card">
+      <div class="card dashboard-surface">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
+          <div class="dashboard-card-head">
             <div>
-              <p class="card-title mb-0">FleetX Live Snapshot</p>
-              <p class="text-muted mb-0">Current operational mix from the integrated vehicle analytics feed.</p>
+              <p class="card-title mb-1">Action Queue</p>
+              <p class="card-description mb-0">Switch between delayed, pending, and missing-location queues without reloading the whole dashboard.</p>
             </div>
-            <a href="{{ route('v2.market-vehicles.index') }}" class="btn btn-primary btn-sm">Open Market Vehicles</a>
+            <a href="{{ route('v2.reports.index') }}" class="btn btn-outline-primary btn-sm">All Reports</a>
           </div>
-          <canvas id="analytics-chart" height="110"></canvas>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-4 grid-margin stretch-card">
-      <div class="card">
-        <div class="card-body">
-          <p class="card-title">Quick Actions</p>
-          <div class="d-grid gap-3">
-            <a href="{{ route('v2.vehicles.create') }}" class="btn btn-outline-primary btn-fw">Add Own Vehicle</a>
-            <a href="{{ route('v2.market-vehicles.create') }}" class="btn btn-outline-info btn-fw">Add Market Vehicle</a>
-            <a href="{{ route('v2.lr-trackings.create') }}" class="btn btn-outline-success btn-fw">Create LR Tracking</a>
-            <a href="{{ route('v2.weight-corrections.create') }}" class="btn btn-outline-warning btn-fw">Add Weight Correction</a>
-            <a href="{{ route('v2.epods.create') }}" class="btn btn-outline-danger btn-fw">Upload EPOD</a>
-            <a href="{{ route('v2.reports.index') }}" class="btn btn-outline-dark btn-fw">Open Reports</a>
+
+          <div class="dashboard-tabs-toolbar">
+            <div class="dashboard-tab-nav" role="tablist" aria-label="Action queue tabs">
+              @foreach ($attentionTabs as $index => $tab)
+                <button
+                  type="button"
+                  class="dashboard-tab {{ $index === 0 ? 'is-active' : '' }}"
+                  data-panel="{{ $tab['key'] }}"
+                  data-url="{{ route('v2.home.attention', ['panel' => $tab['key']]) }}"
+                  aria-selected="{{ $index === 0 ? 'true' : 'false' }}"
+                >
+                  <span class="dashboard-tab__label">{{ $tab['label'] }}</span>
+                  <strong class="dashboard-tab__count">{{ $tab['count'] }}</strong>
+                  <small class="dashboard-tab__meta">{{ $tab['description'] }}</small>
+                </button>
+              @endforeach
+            </div>
+
+            <div class="dashboard-tab-select-wrap">
+              <select id="dashboard-attention-select" class="form-control">
+                @foreach ($attentionTabs as $tab)
+                  <option value="{{ $tab['key'] }}" data-url="{{ route('v2.home.attention', ['panel' => $tab['key']]) }}">
+                    {{ $tab['label'] }} ({{ $tab['count'] }})
+                  </option>
+                @endforeach
+              </select>
+            </div>
+          </div>
+
+          <div
+            id="dashboard-attention-content"
+            class="dashboard-tab-content"
+            data-default-panel="{{ $attentionTabs[0]['key'] }}"
+          >
+            <div class="dashboard-skeleton-stack" aria-hidden="true">
+              <div class="dashboard-skeleton dashboard-skeleton--heading"></div>
+              <div class="dashboard-skeleton dashboard-skeleton--row"></div>
+              <div class="dashboard-skeleton dashboard-skeleton--row"></div>
+              <div class="dashboard-skeleton dashboard-skeleton--row"></div>
+              <div class="dashboard-skeleton dashboard-skeleton--row"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -108,38 +331,53 @@
   </div>
 
   <div class="row">
-    <div class="col-md-7 grid-margin stretch-card">
-      <div class="card">
+    <div class="col-xl-8 grid-margin stretch-card">
+      <div class="card dashboard-surface">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <p class="card-title mb-0">Recent Tracking Records</p>
-            <a href="{{ route('v2.lr-trackings.index') }}" class="text-info">View all</a>
+          <div class="dashboard-card-head">
+            <div>
+              <p class="card-title mb-1">Recent Tracking Activity</p>
+              <p class="card-description mb-0">Most recently updated LR records across the project.</p>
+            </div>
+            <a href="{{ route('v2.lr-trackings.index') }}" class="btn btn-outline-primary btn-sm">View All</a>
           </div>
+
           <div class="table-responsive">
-            <table class="table table-striped">
+            <table class="table dashboard-activity-table">
               <thead>
                 <tr>
                   <th>Vehicle</th>
                   <th>LR Number</th>
-                  <th>Status</th>
+                  <th>Stage</th>
+                  <th>Location</th>
                   <th>Updated</th>
                 </tr>
               </thead>
               <tbody>
                 @forelse ($recentTrackings as $tracking)
                   <tr>
-                    <td>{{ $tracking->vehicleNo }}</td>
-                    <td>{{ $tracking->lrNumber }}</td>
                     <td>
-                      <span class="badge badge-{{ in_array((int) $tracking->status, [1, 3], true) ? 'success' : 'warning' }}">
-                        {{ (int) $tracking->status === 3 ? 'EPOD Uploaded' : $tracking->lrStatus }}
-                      </span>
+                      <div class="dashboard-data-table__primary">{{ $tracking->vehicleNo ?: '-' }}</div>
+                      <div class="dashboard-data-table__secondary">{{ $tracking->lspId ?: '-' }}</div>
                     </td>
-                    <td>{{ $tracking->updated_at }}</td>
+                    <td>{{ $tracking->lrNumber ?: '-' }}</td>
+                    <td>
+                      @if ((int) $tracking->status === 3)
+                        <span class="dashboard-status-badge dashboard-status-badge--success">EPOD Uploaded</span>
+                      @elseif ((int) $tracking->status === 1)
+                        <span class="dashboard-status-badge dashboard-status-badge--info">Delivered</span>
+                      @else
+                        <span class="dashboard-status-badge dashboard-status-badge--warning">{{ $tracking->lrStatus ?: 'Active' }}</span>
+                      @endif
+                    </td>
+                    <td>{{ $tracking->location ?: 'Awaiting location' }}</td>
+                    <td>{{ $formatDate($tracking->updated_at) }}</td>
                   </tr>
                 @empty
                   <tr>
-                    <td colspan="4" class="text-center text-muted">No tracking records yet.</td>
+                    <td colspan="5">
+                      <div class="dashboard-empty-state">No tracking activity is available yet.</div>
+                    </td>
                   </tr>
                 @endforelse
               </tbody>
@@ -148,22 +386,31 @@
         </div>
       </div>
     </div>
-    <div class="col-md-5 grid-margin stretch-card">
-      <div class="card">
+
+    <div class="col-xl-4 grid-margin stretch-card">
+      <div class="card dashboard-surface">
         <div class="card-body">
-          <p class="card-title">Recent EPOD Uploads</p>
-          <div class="schedule-mini">
-            @forelse ($recentEpods as $epod)
-              <div class="schedule-item">
-                <div class="schedule-badge {{ (int) $epod->status === 1 ? 'bg-success' : 'bg-warning' }}"></div>
-                <div>
-                  <h6 class="mb-1">{{ $epod->lrNumber }}</h6>
-                  <p class="mb-0 text-muted">{{ $epod->lspId }}</p>
+          <div class="dashboard-card-head">
+            <div>
+              <p class="card-title mb-1">Recent Alerts</p>
+              <p class="card-description mb-0">Latest warnings and failures from the operational log stream.</p>
+            </div>
+            <a href="{{ route('v2.logs.index') }}" class="btn btn-outline-primary btn-sm">Open Logs</a>
+          </div>
+
+          <div class="dashboard-alert-list">
+            @forelse ($recentAlerts as $alert)
+              <a href="{{ route('v2.logs.show', $alert) }}" class="dashboard-alert-card">
+                <div class="dashboard-alert-card__head">
+                  <span class="{{ $alertTagClasses[$alert->type] ?? 'dashboard-alert-tag dashboard-alert-tag--info' }}">
+                    {{ strtoupper($alert->type) }}
+                  </span>
+                  <small>{{ $formatDate($alert->created_at) }}</small>
                 </div>
-                <small class="text-muted">{{ $epod->created_at }}</small>
-              </div>
+                <strong class="dashboard-alert-card__title">{{ $alert->title ?: 'Untitled log entry' }}</strong>
+              </a>
             @empty
-              <p class="text-muted mb-0">No EPOD uploads available.</p>
+              <div class="dashboard-empty-state">No warning or failure logs were found for the latest activity window.</div>
             @endforelse
           </div>
         </div>
@@ -175,38 +422,232 @@
 @section('scripts')
   <script>
     window.addEventListener('DOMContentLoaded', function () {
-      var context = document.getElementById('analytics-chart');
-      if (!context) {
-        return;
+      function renderChartWhenVisible(canvas, config) {
+        var chartInstance = null;
+
+        if (!canvas || typeof Chart === 'undefined') {
+          return;
+        }
+
+        function buildChart() {
+          if (!chartInstance) {
+            chartInstance = new Chart(canvas, config);
+          }
+        }
+
+        if ('IntersectionObserver' in window) {
+          var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                buildChart();
+                observer.disconnect();
+              }
+            });
+          }, { rootMargin: '120px 0px' });
+
+          observer.observe(canvas);
+        } else {
+          buildChart();
+        }
       }
 
-      new Chart(context, {
-        type: 'bar',
-        data: {
-          labels: ['Running', 'Parked', 'Idle', 'Disconnected', 'Unreachable'],
-          datasets: [{
-            label: 'Vehicles',
-            data: @json($analyticsChart),
-            backgroundColor: ['#4b49ac', '#7da0fa', '#7978e9', '#f3797e', '#ffb830'],
-            borderRadius: 8,
-          }]
-        },
-        options: {
-          plugins: {
-            legend: {
-              display: false
-            }
+      var shipmentCanvas = document.getElementById('shipment-mix-chart');
+      if (shipmentCanvas) {
+        renderChartWhenVisible(shipmentCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: @json($shipmentMix['labels']),
+            datasets: [{
+              data: @json($shipmentMix['values']),
+              backgroundColor: ['#0f766e', '#ef4444', '#f59e0b', '#2563eb'],
+              borderWidth: 0,
+              hoverOffset: 4
+            }]
           },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: {
-                precision: 0
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '72%',
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function (context) {
+                    var total = context.dataset.data.reduce(function (sum, value) {
+                      return sum + value;
+                    }, 0);
+                    var percentage = total > 0 ? ((context.raw * 100) / total).toFixed(1) : '0.0';
+                    return context.label + ': ' + context.raw + ' (' + percentage + '%)';
+                  }
+                }
               }
             }
           }
+        });
+      }
+
+      var trendCanvas = document.getElementById('throughput-trend-chart');
+      if (trendCanvas) {
+        renderChartWhenVisible(trendCanvas, {
+          type: 'line',
+          data: {
+            labels: @json($trend['labels']),
+            datasets: [{
+              label: 'Trackings',
+              data: @json($trend['trackings']),
+              borderColor: '#0f766e',
+              backgroundColor: 'rgba(15, 118, 110, 0.12)',
+              tension: 0.35,
+              fill: true,
+              borderWidth: 2.5,
+              pointRadius: 2
+            }, {
+              label: 'EPOD',
+              data: @json($trend['epods']),
+              borderColor: '#2563eb',
+              backgroundColor: 'rgba(37, 99, 235, 0.08)',
+              tension: 0.35,
+              fill: true,
+              borderWidth: 2,
+              pointRadius: 2
+            }@if ($weightsEnabled), {
+              label: 'Weights',
+              data: @json($trend['weights']),
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.08)',
+              tension: 0.35,
+              fill: true,
+              borderWidth: 2,
+              pointRadius: 2
+            }@endif]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              intersect: false,
+              mode: 'index'
+            },
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  usePointStyle: true,
+                  boxWidth: 8,
+                  padding: 18
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: {
+                  display: false
+                }
+              },
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  precision: 0
+                },
+                grid: {
+                  color: 'rgba(148, 163, 184, 0.18)'
+                }
+              }
+            }
+          }
+        });
+      }
+
+      var attentionShell = document.getElementById('dashboard-attention-content');
+      var attentionButtons = document.querySelectorAll('.dashboard-tab');
+      var attentionSelect = document.getElementById('dashboard-attention-select');
+      var attentionCache = {};
+
+      function skeletonMarkup() {
+        return [
+          '<div class="dashboard-skeleton-stack" aria-hidden="true">',
+          '<div class="dashboard-skeleton dashboard-skeleton--heading"></div>',
+          '<div class="dashboard-skeleton dashboard-skeleton--row"></div>',
+          '<div class="dashboard-skeleton dashboard-skeleton--row"></div>',
+          '<div class="dashboard-skeleton dashboard-skeleton--row"></div>',
+          '<div class="dashboard-skeleton dashboard-skeleton--row"></div>',
+          '</div>'
+        ].join('');
+      }
+
+      function setActivePanel(panel) {
+        Array.prototype.forEach.call(attentionButtons, function (button) {
+          var isActive = button.getAttribute('data-panel') === panel;
+          button.classList.toggle('is-active', isActive);
+          button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        if (attentionSelect) {
+          attentionSelect.value = panel;
         }
+      }
+
+      function loadPanel(panel, url) {
+        if (!attentionShell || !panel || !url) {
+          return;
+        }
+
+        setActivePanel(panel);
+
+        if (attentionCache[panel]) {
+          attentionShell.innerHTML = attentionCache[panel];
+          return;
+        }
+
+        attentionShell.innerHTML = skeletonMarkup();
+
+        window.fetch(url, {
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-Skip-Loader': '1'
+          },
+          skipLoader: true
+        }).then(function (response) {
+          if (!response.ok) {
+            throw new Error('Unable to load the requested queue.');
+          }
+
+          return response.json();
+        }).then(function (payload) {
+          attentionCache[panel] = payload.html;
+          attentionShell.innerHTML = payload.html;
+        }).catch(function () {
+          attentionShell.innerHTML = '<div class="dashboard-empty-state">Unable to load this queue right now. Please try again.</div>';
+
+          if (window.V2 && typeof window.V2.fireAlert === 'function') {
+            window.V2.fireAlert({
+              icon: 'error',
+              title: 'Load Failed',
+              text: 'The action queue could not be loaded.'
+            });
+          }
+        });
+      }
+
+      Array.prototype.forEach.call(attentionButtons, function (button) {
+        button.addEventListener('click', function () {
+          loadPanel(button.getAttribute('data-panel'), button.getAttribute('data-url'));
+        });
       });
+
+      if (attentionSelect) {
+        attentionSelect.addEventListener('change', function () {
+          var option = attentionSelect.options[attentionSelect.selectedIndex];
+          loadPanel(option.value, option.getAttribute('data-url'));
+        });
+      }
+
+      if (attentionButtons.length > 0) {
+        loadPanel(
+          attentionButtons[0].getAttribute('data-panel'),
+          attentionButtons[0].getAttribute('data-url')
+        );
+      }
     });
   </script>
 @endsection

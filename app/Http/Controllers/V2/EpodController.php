@@ -85,7 +85,7 @@ class EpodController extends BaseController
             mkdir($destination, 0777, true);
         }
 
-        Epod::query()->where('status', 0)->delete();
+        $this->clearPendingDrafts($validated['lspId'], $validated['lrNumber'], $destination);
         $file->move($destination, $filename);
 
         $existingUploadedEpod = Epod::query()
@@ -99,7 +99,21 @@ class EpodController extends BaseController
         $epod->lrNumber = $validated['lrNumber'];
         $epod->epod = $filename;
         $epod->status = 0;
-        $epod->save();
+
+        try {
+            $epod->save();
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'EPOD Draft Save Failed', $request, [
+                'lrNumber' => $validated['lrNumber'],
+                'lspId' => $validated['lspId'],
+                'epod' => $filename,
+            ]);
+
+            return back()
+                ->withInput($request->only('lspId', 'lrNumber'))
+                ->with('message', $exception->getMessage())
+                ->with('message_type', 'danger');
+        }
 
         $path = $destination . DIRECTORY_SEPARATOR . $filename;
         $mimeType = mime_content_type($path) ?: 'application/octet-stream';
@@ -122,16 +136,47 @@ class EpodController extends BaseController
                 ->with('message_type', 'danger');
         }
 
-        $epod->status = 1;
-        $epod->save();
+        try {
+            $epod->status = 1;
+            $epod->save();
 
-        Tracking::query()
-            ->where('lspId', $validated['lspId'])
-            ->where('lrNumber', $validated['lrNumber'])
-            ->update(['status' => 3]);
+            Tracking::query()
+                ->where('lspId', $validated['lspId'])
+                ->where('lrNumber', $validated['lrNumber'])
+                ->update(['status' => 3]);
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'EPOD Status Finalize Failed', $request, [
+                'epod_id' => $epod->id,
+                'lrNumber' => $epod->lrNumber,
+                'lspId' => $epod->lspId,
+            ], 'warning');
+
+            return redirect()->route('v2.epods.index')
+                ->with('message', 'EPOD reached the remote API, but local status update failed. Please check logs.')
+                ->with('message_type', 'warning');
+        }
 
         return redirect()->route('v2.epods.index')
             ->with('message', $existingUploadedEpod ? 'EPOD re-uploaded successfully.' : 'EPOD uploaded successfully.')
             ->with('message_type', 'success');
+    }
+
+    private function clearPendingDrafts(string $lspId, string $lrNumber, string $destination)
+    {
+        $drafts = Epod::query()
+            ->where('lspId', $lspId)
+            ->where('lrNumber', $lrNumber)
+            ->where('status', 0)
+            ->get();
+
+        foreach ($drafts as $draft) {
+            $path = $destination . DIRECTORY_SEPARATOR . $draft->epod;
+
+            if ($draft->epod && file_exists($path)) {
+                @unlink($path);
+            }
+
+            $draft->delete();
+        }
     }
 }

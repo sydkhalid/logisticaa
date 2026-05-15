@@ -30,6 +30,7 @@ $router->prefix('v2')->name('v2.')->group(function () use ($router) {
         $router->post('/logout', [AuthController::class, 'logout'])->name('logout');
 
         $router->get('/home', [DashboardController::class, 'index'])->name('home');
+        $router->get('/home/attention/{panel}', [DashboardController::class, 'attention'])->name('home.attention');
         $router->get('/integrations', [IntegrationController::class, 'index'])->name('integrations.index');
         $router->post('/integrations/fleetx/refresh-token', [IntegrationController::class, 'refreshFleetToken'])->name('integrations.fleetx.refresh-token');
         $router->post('/integrations/travis/refresh-token', [IntegrationController::class, 'refreshTravisToken'])->name('integrations.travis.refresh-token');

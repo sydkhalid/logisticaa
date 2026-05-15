@@ -4,16 +4,16 @@
 <div class="row">
   <div class="col-md-12 grid-margin">
     <div class="row align-items-center">
-      <div class="col-md-8">
+      <div class="col-12 col-lg-8">
         <h3 class="font-weight-bold">{{ $pageTitle ?? 'Dashboard' }}</h3>
         @if (!empty($pageDescription))
           <h6 class="font-weight-normal mb-0">{{ $pageDescription }}</h6>
         @endif
       </div>
-      <div class="col-md-4">
+      <div class="col-12 col-lg-4 mt-3 mt-lg-0">
         @if (!empty($breadcrumbs))
           <nav aria-label="breadcrumb">
-            <ol class="breadcrumb breadcrumb-custom justify-content-md-end mb-0">
+            <ol class="breadcrumb breadcrumb-custom justify-content-start justify-content-lg-end mb-0">
               <li class="breadcrumb-item"><a href="{{ route('v2.home') }}">Home</a></li>
               @foreach ($breadcrumbs as $breadcrumb)
                 <li class="breadcrumb-item {{ empty($breadcrumb['url']) ? 'active' : '' }}">

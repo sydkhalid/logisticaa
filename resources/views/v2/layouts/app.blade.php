@@ -9,6 +9,7 @@
       <div class="main-panel">
         <div class="content-wrapper">
           @include('v2.layouts.partials.page-header')
+          @include('v2.layouts.partials.consent-banner')
           @include('v2.layouts.partials.flash')
           @yield('content')
         </div>
@@ -17,18 +18,14 @@
     </div>
   </div>
   <div id="v2-page-loader" class="v2-page-loader" hidden>
-    <div class="v2-page-loader__panel">
-      <span class="v2-page-loader__spinner" aria-hidden="true"></span>
-      <div class="v2-page-loader__copy">
-        <strong class="v2-page-loader__title">
-          <span class="v2-page-loader__title-text">Loading data</span>
-          <span class="v2-page-loader__dots" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-          </span>
-        </strong>
-        <small class="v2-page-loader__subtitle">Preparing the next view.</small>
+    <div class="v2-page-loader__panel" role="status" aria-live="polite" aria-label="Loading">
+      <div class="v2-page-loader__motion" aria-hidden="true">
+        <span class="v2-page-loader__halo"></span>
+        <span class="v2-page-loader__pulse"></span>
+        <span class="v2-page-loader__spinner"></span>
+        <span class="v2-page-loader__dot v2-page-loader__dot--one"></span>
+        <span class="v2-page-loader__dot v2-page-loader__dot--two"></span>
+        <span class="v2-page-loader__dot v2-page-loader__dot--three"></span>
       </div>
     </div>
   </div>

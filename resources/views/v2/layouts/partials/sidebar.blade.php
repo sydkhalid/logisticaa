@@ -2,6 +2,12 @@
   $trackingOpen = request()->routeIs('v2.lr-trackings.*');
 @endphp
 <nav class="sidebar sidebar-offcanvas" id="sidebar">
+  <div class="sidebar-overview">
+    <span class="sidebar-overview__eyebrow">Control Center</span>
+    <strong class="sidebar-overview__title">Logistics Workspace</strong>
+    <small class="sidebar-overview__meta">{{ auth()->user()->name ?? 'User' }}</small>
+  </div>
+  <div class="sidebar-section-label">Navigation</div>
   <ul class="nav">
     <li class="nav-item">
       <a class="nav-link {{ request()->routeIs('v2.home') ? 'active' : '' }}" href="{{ route('v2.home') }}">
