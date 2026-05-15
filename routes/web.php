@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\App\SettingsController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HomeController;
@@ -10,6 +9,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\TrackController;
 use App\Http\Controllers\VehicleotherController;
 use App\Http\Controllers\WeightController;
+use App\Http\Controllers\V2\AuthController as V2AuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,13 +22,85 @@ use App\Http\Controllers\WeightController;
 |
 */
 
-Route::get('/', [AuthController::class, 'index'])->name('index');
-Route::get('/login', [AuthController::class, 'index'])->name('index');
-Route::post('/login', [AuthController::class, 'login'])->name('login');
+Route::get('/', function () {
+    return auth()->check()
+        ? redirect()->route('v2.home')
+        : redirect()->route('v2.login');
+})->name('index');
+Route::get('/login', function () {
+    return auth()->check()
+        ? redirect()->route('v2.home')
+        : redirect()->route('v2.login');
+})->name('login');
+Route::post('/login', [V2AuthController::class, 'login'])
+    ->middleware('throttle:5,1')
+    ->name('login.submit');
 
 Route::group(['middleware' => ['auth']], function () {
     //home
-    Route::get('/home', [HomeController::class, 'index'])->name('home');
+    Route::get('/home', function () {
+        return redirect()->route('v2.home');
+    })->name('home');
+    Route::get('/dashboard', function () {
+        return redirect()->route('v2.home');
+    });
+    Route::get('vehicle/create', function () {
+        return redirect()->route('v2.vehicles.create');
+    });
+    Route::get('vehicle/{vehicle}/edit', function ($vehicle) {
+        return redirect()->route('v2.vehicles.edit', $vehicle);
+    });
+    Route::get('vehicle/{vehicle}', function ($vehicle) {
+        return redirect()->route('v2.vehicles.show', $vehicle);
+    });
+    Route::get('vehicle', function () {
+        return redirect()->route('v2.vehicles.index');
+    });
+    Route::get('vehicleOther/create', function () {
+        return redirect()->route('v2.market-vehicles.create');
+    });
+    Route::get('vehicleOther/{vehicle}/edit', function ($vehicle) {
+        return redirect()->route('v2.market-vehicles.edit', $vehicle);
+    });
+    Route::get('vehicleOther/{vehicle}', function ($vehicle) {
+        return redirect()->route('v2.market-vehicles.show', $vehicle);
+    });
+    Route::get('vehicleOther', function () {
+        return redirect()->route('v2.market-vehicles.index');
+    });
+    Route::get('lrtracking/create', function () {
+        return redirect()->route('v2.lr-trackings.create');
+    });
+    Route::get('lrtracking/{tracking}/edit', function ($tracking) {
+        return redirect()->route('v2.lr-trackings.edit', $tracking);
+    });
+    Route::get('lrtracking/{tracking}', function ($tracking) {
+        return redirect()->route('v2.lr-trackings.show', $tracking);
+    });
+    Route::get('lrtracking', function () {
+        return redirect()->route('v2.lr-trackings.index');
+    });
+    Route::get('delivered_list', function () {
+        return redirect()->route('v2.lr-trackings.completed');
+    })->name('delivered_list');
+    Route::get('/epod', function () {
+        return redirect()->route('v2.epods.index');
+    })->name('epod');
+    Route::get('epod/add_epod', function () {
+        return redirect()->route('v2.epods.create');
+    })->name('add_epod');
+    Route::get('weight-correction/create', function () {
+        return redirect()->route('v2.weight-corrections.create');
+    });
+    Route::get('weight-correction/{weight}/edit', function ($weight) {
+        return redirect()->route('v2.weight-corrections.edit', $weight);
+    });
+    Route::get('weight-correction', function () {
+        return redirect()->route('v2.weight-corrections.index');
+    });
+    Route::get('settings', function () {
+        return redirect()->route('v2.settings.edit');
+    });
     // vehicle
     Route::resource('vehicle', VehicleController::class);
     Route::resource('vehicleOther', VehicleotherController::class);
@@ -38,10 +110,7 @@ Route::group(['middleware' => ['auth']], function () {
 
     //tracking LR
     Route::resource('lrtracking', LrtrackingController::class);
-    Route::get('delivered_list',[LrtrackingController::class, 'delivered_list'])->name('delivered_list');
     Route::get('lrtracking_again/{vehicle_no}/{lrnumber}', [TrackController::class, 'getsinglelrtracking'])->name('getsinglelrtracking');
-    Route::get('/epod',[HomeController::class, 'epod'])->name('epod');
-    Route::get('epod/add_epod',[HomeController::class, 'add_epod'])->name('add_epod');
     Route::post('epod/epod_upload', [HomeController::class, 'epod_upload'])->name('epod_upload');
     //weight correction
     Route::resource('weight-correction', WeightController::class);
@@ -50,7 +119,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
     //settings
     Route::resource('settings', SettingController::class);
-    Route::post('settings/save', 'Admin\App\SettingsController@save');
+    Route::post('settings/save', [SettingController::class, 'store']);
 });
 
 require base_path('routes/web_v2.php');

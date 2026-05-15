@@ -27,6 +27,7 @@ class SystemLogController extends BaseController
                 'warning' => (clone $query)->where('type', 'warning')->count(),
                 'danger' => (clone $query)->whereIn('type', ['danger', 'emergency'])->count(),
             ],
+            'allLogsCount' => ActivityLog::query()->count(),
             'types' => ['info', 'success', 'warning', 'danger', 'emergency'],
         ]);
     }
@@ -81,6 +82,15 @@ class SystemLogController extends BaseController
             'prettyInfo' => $prettyInfo ?: '{}',
             'displayDate' => $this->displayDate($log->created_at),
         ]);
+    }
+
+    public function clear()
+    {
+        ActivityLog::query()->delete();
+
+        return redirect()->route('v2.logs.index')
+            ->with('message', 'System logs cleared successfully.')
+            ->with('message_type', 'success');
     }
 
     private function validatedFilters(Request $request)

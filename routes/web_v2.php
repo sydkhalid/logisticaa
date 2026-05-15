@@ -23,7 +23,9 @@ $router->prefix('v2')->name('v2.')->group(function () use ($router) {
 
     $router->middleware('guest')->group(function () use ($router) {
         $router->get('/login', [AuthController::class, 'showLogin'])->name('login');
-        $router->post('/login', [AuthController::class, 'login'])->name('login.submit');
+        $router->post('/login', [AuthController::class, 'login'])
+            ->middleware('throttle:5,1')
+            ->name('login.submit');
     });
 
     $router->middleware('auth')->group(function () use ($router) {
@@ -37,6 +39,7 @@ $router->prefix('v2')->name('v2.')->group(function () use ($router) {
         $router->prefix('logs')->name('logs.')->group(function () use ($router) {
             $router->get('/', [SystemLogController::class, 'index'])->name('index');
             $router->get('/data', [SystemLogController::class, 'data'])->name('data');
+            $router->post('/clear', [SystemLogController::class, 'clear'])->name('clear');
             $router->get('/{log}', [SystemLogController::class, 'show'])->name('show');
         });
 

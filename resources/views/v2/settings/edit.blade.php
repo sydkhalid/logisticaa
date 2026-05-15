@@ -46,11 +46,11 @@
               </div>
               <div class="col-md-6 form-group">
                 <label for="address">WheelsEye Token</label>
-                <input type="text" class="form-control" id="address" name="address" value="{{ old('address', $setting->address) }}">
+                <input type="password" class="form-control" id="address" name="address" value="{{ old('address') }}" placeholder="{{ $setting->address ? 'Token saved. Leave blank to keep current token.' : 'Enter WheelsEye token' }}" autocomplete="new-password">
               </div>
               <div class="col-md-12 form-group">
                 <label for="access_token">FleetX Access Token</label>
-                <input type="text" class="form-control" id="access_token" name="access_token" value="{{ old('access_token', $setting->access_token) }}">
+                <input type="password" class="form-control" id="access_token" name="access_token" value="{{ old('access_token') }}" placeholder="{{ $setting->access_token ? 'Token saved. Leave blank to keep current token.' : 'Enter FleetX access token' }}" autocomplete="new-password">
               </div>
             </div>
 

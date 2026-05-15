@@ -89,7 +89,10 @@ class AuthController extends Controller
                         ],
                     ];
                     // dd(json_encode($send_data));
-                $client = new Client(['base_uri' => $this->setting['bocsh_link'] , 'verify' => false]);
+                $client = new Client([
+                    'base_uri' => $this->setting['bocsh_link'],
+                    'verify' => $this->verifyTls(),
+                ]);
                 $response = $client->request('POST', '/api/auth/login',
                 [
                         'headers' => $headers,
@@ -148,6 +151,25 @@ class AuthController extends Controller
             ->withInput()
             ->withErrors('Error In Logout');
         }
+    }
+
+    private function verifyTls()
+    {
+        if (!filter_var(env('TRAVIS_VERIFY_TLS', true), FILTER_VALIDATE_BOOLEAN)) {
+            return false;
+        }
+
+        $caBundle = trim((string) env('TRAVIS_CA_BUNDLE', ''));
+
+        if ($caBundle === '') {
+            return true;
+        }
+
+        if (!is_file($caBundle)) {
+            throw new \RuntimeException('Configured Travis CA bundle was not found.');
+        }
+
+        return $caBundle;
     }
 
 }

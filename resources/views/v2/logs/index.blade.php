@@ -55,6 +55,10 @@
               <h4 class="card-title mb-1">System Activity Log</h4>
               <p class="card-description mb-0">All saved user and system activity with date-wise filtering.</p>
             </div>
+            <form method="POST" action="{{ route('v2.logs.clear') }}" onsubmit="return confirm('Clear all system logs? This cannot be undone.');">
+              @csrf
+              <button type="submit" class="btn btn-danger" {{ $allLogsCount < 1 ? 'disabled' : '' }}>Clear All Logs</button>
+            </form>
           </div>
 
           <form method="GET" action="{{ route('v2.logs.index') }}" class="row mb-4 g-3">

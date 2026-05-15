@@ -32,8 +32,8 @@ class TrackController extends Controller
 
         $send_data = [
             'userDetails' => [
-                'emailId' => 'connect@logisticaa.co.in',
-                'password' => '!Meenakshi1'
+                'emailId' => $this->travisSystemEmail(),
+                'password' => $this->travisSystemPassword(),
             ],
         ];
         $client = new Client(['base_uri' => $this->setting['bocsh_link']]);
@@ -46,6 +46,34 @@ class TrackController extends Controller
         $user = User::where('id', 1)->Update(['bearer_token' => $data['token']]);
         return $data;
     }
+
+    private function travisSystemEmail(): string
+    {
+        $systemUser = User::query()->first();
+        $email = trim((string) env('TRAVIS_SYSTEM_EMAIL', ''));
+
+        if ($email !== '') {
+            return $email;
+        }
+
+        if ($systemUser && $systemUser->email) {
+            return $systemUser->email;
+        }
+
+        return 'connect@logisticaa.co.in';
+    }
+
+    private function travisSystemPassword(): string
+    {
+        $password = trim((string) env('TRAVIS_SYSTEM_PASSWORD', ''));
+
+        if ($password === '') {
+            throw new \RuntimeException('Travis system password is not configured.');
+        }
+
+        return $password;
+    }
+
     /**
      * Get Get Lr Tracking
      * @return object

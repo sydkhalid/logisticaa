@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V2;
 use App\Models\Epod;
 use App\Models\Tracking;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class EpodController extends BaseController
 {
@@ -62,7 +63,7 @@ class EpodController extends BaseController
         $validated = $request->validate([
             'lspId' => ['required', 'string'],
             'lrNumber' => ['required', 'string'],
-            'epod' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:2048'],
+            'epod' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'mimetypes:application/pdf,image/jpeg,image/png', 'max:2048'],
         ]);
 
         $trackingExists = Tracking::query()
@@ -78,11 +79,12 @@ class EpodController extends BaseController
         }
 
         $file = $request->file('epod');
-        $filename = 'category' . random_int(1, 1000000) . '.' . $file->getClientOriginalExtension();
-        $destination = base_path('upload/epods');
+        $extension = strtolower($file->extension() ?: $file->getClientOriginalExtension());
+        $filename = 'epod-' . Str::uuid()->toString() . '.' . $extension;
+        $destination = storage_path('app/epods');
 
         if (!is_dir($destination)) {
-            mkdir($destination, 0777, true);
+            mkdir($destination, 0755, true);
         }
 
         $this->clearPendingDrafts($validated['lspId'], $validated['lrNumber'], $destination);

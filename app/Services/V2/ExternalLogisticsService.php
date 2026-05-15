@@ -16,11 +16,7 @@ use RuntimeException;
 
 class ExternalLogisticsService
 {
-    private const FLEET_BASIC_AUTH = 'Basic ZmxlZXR4OnNlY3JldA==';
-    private const FLEET_USERNAME = 'API_User_Dont_Delete_10087';
-    private const FLEET_PASSWORD = 'sPQe45lW';
     private const SYSTEM_EMAIL = 'connect@logisticaa.co.in';
-    private const SYSTEM_PASSWORD = '!Meenakshi1';
     private const DEFAULT_TIMEOUT = 20;
     private const DEFAULT_CONNECT_TIMEOUT = 10;
 
@@ -101,8 +97,9 @@ class ExternalLogisticsService
     public function syncSystemBocshToken(?User $user = null): ?string
     {
         $systemUser = User::query()->first();
-        $email = env('TRAVIS_SYSTEM_EMAIL', $systemUser ? $systemUser->email : self::SYSTEM_EMAIL);
-        $response = $this->loginToBocsh($email, env('TRAVIS_SYSTEM_PASSWORD', self::SYSTEM_PASSWORD));
+        $email = $this->systemBocshEmail($systemUser);
+
+        $response = $this->loginToBocsh($email, $this->requiredEnv('TRAVIS_SYSTEM_PASSWORD', 'Travis system password'));
         $token = $response['token'] ?? null;
 
         if ($token && $systemUser) {
@@ -131,11 +128,11 @@ class ExternalLogisticsService
 
         $response = $this->fleetRequest('POST', 'login', [
             'headers' => [
-                'Authorization' => self::FLEET_BASIC_AUTH,
+                'Authorization' => $this->requiredEnv('FLEETX_BASIC_AUTH', 'FleetX basic authorization header'),
             ],
             'form_params' => [
-                'username' => env('FLEETX_API_USERNAME', self::FLEET_USERNAME),
-                'password' => env('FLEETX_API_PASSWORD', self::FLEET_PASSWORD),
+                'username' => $this->requiredEnv('FLEETX_API_USERNAME', 'FleetX API username'),
+                'password' => $this->requiredEnv('FLEETX_API_PASSWORD', 'FleetX API password'),
                 'grant_type' => 'password',
             ],
         ], false);
@@ -168,7 +165,7 @@ class ExternalLogisticsService
             return array_merge($this->fleetAnalyticsDefaults(), $payload);
         } catch (\Throwable $exception) {
             Log::warning('FleetX analytics unavailable', [
-                'message' => $exception->getMessage(),
+                'message' => $this->maskSensitiveText($exception->getMessage()),
             ]);
 
             return $this->fleetAnalyticsDefaults();
@@ -177,11 +174,24 @@ class ExternalLogisticsService
 
     public function findFleetVehicle(string $vehicleNo, ?User $user = null): ?array
     {
-        $needle = strtoupper(trim($vehicleNo));
+        $needle = $this->normalizeVehicleNumber($vehicleNo);
+        if (!$needle) {
+            return null;
+        }
+
+        try {
+            $vehicle = $this->fleetRequest('GET', 'analytics/live/byNumber/' . rawurlencode($needle), [], true, $user);
+            if ($this->normalizeVehicleNumber($vehicle['vehicleNumber'] ?? null) === $needle) {
+                return $vehicle;
+            }
+        } catch (\Throwable $exception) {
+            // Fall back to the full live list when FleetX cannot resolve a single vehicle.
+        }
+
         $analytics = $this->getFleetAnalytics($user);
 
         foreach ($analytics['vehicles'] as $vehicle) {
-            if (($vehicle['vehicleNumber'] ?? null) === $needle) {
+            if ($this->normalizeVehicleNumber($vehicle['vehicleNumber'] ?? null) === $needle) {
                 return $vehicle;
             }
         }
@@ -359,7 +369,7 @@ class ExternalLogisticsService
         } catch (RequestException $exception) {
             $health['message'] = $this->extractErrorMessage($exception, 'FleetX request failed.');
         } catch (\Throwable $exception) {
-            $health['message'] = $exception->getMessage();
+            $health['message'] = $this->maskSensitiveText($exception->getMessage());
         }
 
         return $health;
@@ -420,7 +430,7 @@ class ExternalLogisticsService
         } catch (RequestException $exception) {
             $health['message'] = $this->extractErrorMessage($exception, 'WheelsEye request failed.');
         } catch (\Throwable $exception) {
-            $health['message'] = $exception->getMessage();
+            $health['message'] = $this->maskSensitiveText($exception->getMessage());
         }
 
         return $health;
@@ -430,7 +440,8 @@ class ExternalLogisticsService
     {
         $settings = $this->getSettings();
         $systemUser = User::query()->first();
-        $email = env('TRAVIS_SYSTEM_EMAIL', $systemUser ? $systemUser->email : self::SYSTEM_EMAIL);
+        $email = $this->systemBocshEmail($systemUser);
+        $storedToken = $this->existingBocshToken($user);
         $health = [
             'label' => 'Travis',
             'status' => 'offline',
@@ -438,7 +449,7 @@ class ExternalLogisticsService
             'base_url' => $settings ? $settings->bocsh_link : null,
             'message' => 'Travis link is not configured.',
             'token_source' => $this->bocshTokenSource($user),
-            'stored_token' => $this->maskSecret($this->existingBocshToken($user)),
+            'stored_token' => $this->maskSecret($storedToken),
             'system_email' => $email,
             'issued_token' => '-',
             'active_tracking_count' => Tracking::query()->where('status', 0)->count(),
@@ -450,8 +461,18 @@ class ExternalLogisticsService
             return $health;
         }
 
+        if (!$this->envIsConfigured('TRAVIS_SYSTEM_PASSWORD')) {
+            $health['status'] = $storedToken ? 'warning' : 'offline';
+            $health['message'] = $storedToken
+                ? 'Travis stored token is available, but fresh login is disabled because the system password is not configured.'
+                : 'Travis system password is not configured and no stored token is available.';
+            $health['issues'][] = 'Set TRAVIS_SYSTEM_PASSWORD in .env to enable token refresh.';
+
+            return $health;
+        }
+
         try {
-            $response = $this->loginToBocsh($email, env('TRAVIS_SYSTEM_PASSWORD', self::SYSTEM_PASSWORD));
+            $response = $this->loginToBocsh($email, $this->requiredEnv('TRAVIS_SYSTEM_PASSWORD', 'Travis system password'));
             if (!$this->loginSucceeded($response)) {
                 throw new RuntimeException($response['message'] ?? 'Travis authentication failed.');
             }
@@ -462,7 +483,7 @@ class ExternalLogisticsService
         } catch (RequestException $exception) {
             $health['message'] = $this->extractErrorMessage($exception, 'Travis request failed.');
         } catch (\Throwable $exception) {
-            $health['message'] = $exception->getMessage();
+            $health['message'] = $this->maskSensitiveText($exception->getMessage());
         }
 
         return $health;
@@ -685,7 +706,7 @@ class ExternalLogisticsService
             }
         }
 
-        return $exception->getMessage() ?: $fallback;
+        return $this->maskSensitiveText($exception->getMessage() ?: $fallback);
     }
 
     private function normalizeBaseUri(string $uri): string
@@ -893,7 +914,7 @@ class ExternalLogisticsService
             ]);
         } catch (\Throwable $exception) {
             Log::warning('Unable to persist FleetX token to settings', [
-                'message' => $exception->getMessage(),
+                'message' => $this->maskSensitiveText($exception->getMessage()),
             ]);
         }
     }
@@ -1029,8 +1050,64 @@ class ExternalLogisticsService
         return false;
     }
 
-    private function verifyTls(): bool
+    private function verifyTls()
     {
-        return filter_var(env('TRAVIS_VERIFY_TLS', false), FILTER_VALIDATE_BOOLEAN);
+        if (!filter_var(env('TRAVIS_VERIFY_TLS', true), FILTER_VALIDATE_BOOLEAN)) {
+            return false;
+        }
+
+        $caBundle = trim((string) env('TRAVIS_CA_BUNDLE', ''));
+
+        if ($caBundle === '') {
+            return true;
+        }
+
+        if (!is_file($caBundle)) {
+            throw new RuntimeException('Configured Travis CA bundle was not found.');
+        }
+
+        return $caBundle;
+    }
+
+    private function requiredEnv(string $key, string $label): string
+    {
+        $value = trim((string) env($key, ''));
+
+        if ($value === '') {
+            throw new RuntimeException($label . ' is not configured.');
+        }
+
+        return $value;
+    }
+
+    private function envIsConfigured(string $key): bool
+    {
+        return trim((string) env($key, '')) !== '';
+    }
+
+    private function systemBocshEmail(?User $systemUser = null): string
+    {
+        $email = trim((string) env('TRAVIS_SYSTEM_EMAIL', ''));
+
+        if ($email !== '') {
+            return $email;
+        }
+
+        if ($systemUser && $systemUser->email) {
+            return $systemUser->email;
+        }
+
+        return self::SYSTEM_EMAIL;
+    }
+
+    private function maskSensitiveText(string $value): string
+    {
+        return preg_replace_callback(
+            '/([?&][^=&]*(?:password|token|secret|authorization|bearer|access|epod)[^=]*)=([^&\\s]*)/i',
+            function (array $matches) {
+                return $matches[1] . '=[masked]';
+            },
+            $value
+        );
     }
 }

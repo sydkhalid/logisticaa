@@ -17,25 +17,6 @@ class VehicleotherController extends Controller
     {
         $this->setting = Setting::first();
         $this->data['set'] = $this->setting();
-        $headers = [
-            'Authorization' => 'Basic ZmxlZXR4OnNlY3JldA==',
-        ];
-
-        $data = [];
-        $data['username'] = 'API_User_Dont_Delete_10087';
-        $data['password'] = 'sPQe45lW';
-        $data['grant_type'] = 'password';
-        // dd($data);
-       $formData = $data;
-
-        $client = new Client(['base_uri' => $this->setting['flee_link']]);
-                $response = $client->request('POST', 'login',
-                [
-                        'headers' => $headers,
-                        'form_params' =>  $formData
-                ]);
-        $data = json_decode((string)$response->getBody(),true);
-        $user = User::where('id', 1)->Update(['access_token' => $data['access_token']]);
     }
 
     /**

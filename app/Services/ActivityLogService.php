@@ -27,7 +27,7 @@ class ActivityLogService
             'type' => $this->requestType($statusCode, $exception),
             'title' => $this->requestTitle($request),
             'description' => $this->requestDescription($request, $statusCode, $exception),
-            'uri' => $request->fullUrl(),
+            'uri' => $this->maskSensitiveUrl($request->fullUrl()),
             'ip' => $request->ip(),
             'is_api' => $this->isApiRequest($request) ? 1 : 0,
             'request_info' => $this->encodeRequestInfo($request, $statusCode, $exception),
@@ -81,8 +81,8 @@ class ActivityLogService
             'user_id' => $userId ?: ($requestUser ? $requestUser->id : null),
             'type' => $this->normalizeType($type ?: 'danger'),
             'title' => $this->limitText($title, 255),
-            'description' => $this->limitText($exception->getMessage(), 16000),
-            'uri' => $request ? $request->fullUrl() : (isset($context['uri']) ? (string) $context['uri'] : 'system://exception'),
+            'description' => $this->limitText($this->maskSensitiveText($exception->getMessage()), 16000),
+            'uri' => $this->maskSensitiveUrl($request ? $request->fullUrl() : (isset($context['uri']) ? (string) $context['uri'] : 'system://exception')),
             'ip' => $request ? $request->ip() : (isset($context['ip']) ? (string) $context['ip'] : null),
             'is_api' => $request ? ($this->isApiRequest($request) ? 1 : 0) : (!empty($context['is_api']) ? 1 : 0),
             'request_info' => json_encode($this->exceptionContext($exception, $context, $request), JSON_UNESCAPED_SLASHES),
@@ -113,6 +113,10 @@ class ActivityLogService
         }
 
         if ($request->is('_ignition/*') || $request->is('favicon.ico')) {
+            return false;
+        }
+
+        if ($request->routeIs('v2.logs.clear')) {
             return false;
         }
 
@@ -164,7 +168,7 @@ class ActivityLogService
         $summary = strtoupper($request->method()) . ' ' . $request->path() . ' completed with status ' . $statusCode . '.';
 
         if ($exception) {
-            return $summary . ' ' . $exception->getMessage();
+            return $summary . ' ' . $this->maskSensitiveText($exception->getMessage());
         }
 
         return $summary;
@@ -176,7 +180,7 @@ class ActivityLogService
         $data = [
             'method' => $request->method(),
             'path' => $request->path(),
-            'full_url' => $request->fullUrl(),
+            'full_url' => $this->maskSensitiveUrl($request->fullUrl()),
             'route_name' => $route && $route->getName() ? $route->getName() : null,
             'status_code' => $statusCode,
             'is_ajax' => $request->ajax(),
@@ -184,7 +188,7 @@ class ActivityLogService
             'query' => $this->sanitizeValue($request->query()),
             'input' => $this->sanitizeValue($request->except(['_token', '_method'])),
             'user_agent' => $request->userAgent(),
-            'referer' => $request->headers->get('referer'),
+            'referer' => $this->maskSensitiveUrl($request->headers->get('referer')),
         ];
 
         if ($request->allFiles()) {
@@ -194,7 +198,7 @@ class ActivityLogService
         if ($exception) {
             $data['exception'] = [
                 'class' => get_class($exception),
-                'message' => $exception->getMessage(),
+                'message' => $this->maskSensitiveText($exception->getMessage()),
             ];
         }
 
@@ -300,7 +304,7 @@ class ActivityLogService
         $data = [
             'exception' => [
                 'class' => get_class($exception),
-                'message' => $exception->getMessage(),
+                'message' => $this->maskSensitiveText($exception->getMessage()),
                 'file' => $exception->getFile(),
                 'line' => $exception->getLine(),
             ],
@@ -311,7 +315,7 @@ class ActivityLogService
             $data['request'] = [
                 'method' => $request->method(),
                 'path' => $request->path(),
-                'full_url' => $request->fullUrl(),
+                'full_url' => $this->maskSensitiveUrl($request->fullUrl()),
                 'route_name' => $request->route() && $request->route()->getName() ? $request->route()->getName() : null,
                 'query' => $this->sanitizeValue($request->query()),
                 'input' => $this->sanitizeValue($request->except(['_token', '_method'])),
@@ -319,5 +323,31 @@ class ActivityLogService
         }
 
         return $data;
+    }
+
+    protected function maskSensitiveUrl(?string $url): ?string
+    {
+        if ($url === null || $url === '') {
+            return $url;
+        }
+
+        return preg_replace_callback(
+            '/([?&][^=&]*(?:password|token|secret|authorization|bearer|access|epod)[^=]*)=([^&]*)/i',
+            function (array $matches) {
+                return $matches[1] . '=[masked]';
+            },
+            $url
+        );
+    }
+
+    protected function maskSensitiveText(string $value): string
+    {
+        return preg_replace_callback(
+            '/([?&][^=&]*(?:password|token|secret|authorization|bearer|access|epod)[^=]*)=([^&\\s]*)/i',
+            function (array $matches) {
+                return $matches[1] . '=[masked]';
+            },
+            $value
+        );
     }
 }

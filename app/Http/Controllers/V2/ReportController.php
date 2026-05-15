@@ -193,16 +193,29 @@ class ReportController extends BaseController
     {
         return response()->streamDownload(function () use ($headings, $rows, $mapper) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, $headings);
+            fputcsv($handle, array_map([$this, 'csvCell'], $headings));
 
             foreach ($rows as $row) {
-                fputcsv($handle, $mapper($row));
+                fputcsv($handle, array_map([$this, 'csvCell'], $mapper($row)));
             }
 
             fclose($handle);
         }, $filename, [
             'Content-Type' => 'text/csv',
         ]);
+    }
+
+    private function csvCell($value): string
+    {
+        if ($value instanceof \DateTimeInterface) {
+            $value = $value->format('Y-m-d H:i:s');
+        }
+
+        $value = (string) $value;
+
+        return preg_match('/^[=+\-@]/', $value) === 1
+            ? "'" . $value
+            : $value;
     }
 
     public function trackingStage($tracking)

@@ -25,13 +25,13 @@ class SettingController extends BaseController
     {
         $validated = $request->validate([
             'id' => ['nullable', 'exists:settings,id'],
-            'name' => ['nullable', 'string'],
-            'copyright' => ['nullable', 'string'],
-            'bocsh_link' => ['nullable', 'string'],
-            'tracing_link' => ['nullable', 'string'],
-            'flee_link' => ['nullable', 'string'],
-            'address' => ['nullable', 'string'],
-            'access_token' => ['nullable', 'string'],
+            'name' => ['nullable', 'string', 'max:255'],
+            'copyright' => ['nullable', 'string', 'max:255'],
+            'bocsh_link' => ['nullable', 'url', 'starts_with:http://,https://', 'max:255'],
+            'tracing_link' => ['nullable', 'url', 'starts_with:http://,https://', 'max:255'],
+            'flee_link' => ['nullable', 'url', 'starts_with:http://,https://', 'max:255'],
+            'address' => ['nullable', 'string', 'max:1000'],
+            'access_token' => ['nullable', 'string', 'max:2000'],
         ]);
 
         try {
@@ -44,8 +44,15 @@ class SettingController extends BaseController
             $setting->bocsh_link = $validated['bocsh_link'] ?? null;
             $setting->tracing_link = $validated['tracing_link'] ?? null;
             $setting->flee_link = $validated['flee_link'] ?? null;
-            $setting->address = $validated['address'] ?? null;
-            $setting->access_token = $validated['access_token'] ?? null;
+
+            if (array_key_exists('address', $validated) && trim((string) $validated['address']) !== '') {
+                $setting->address = $validated['address'];
+            }
+
+            if (array_key_exists('access_token', $validated) && trim((string) $validated['access_token']) !== '') {
+                $setting->access_token = $validated['access_token'];
+            }
+
             $setting->save();
         } catch (\Throwable $exception) {
             $this->logHandledException($exception, 'Settings Update Failed', $request, [
@@ -54,7 +61,7 @@ class SettingController extends BaseController
 
             return back()
                 ->withInput()
-                ->with('message', $exception->getMessage())
+                ->with('message', 'Settings could not be saved. Please check the values and try again.')
                 ->with('message_type', 'danger');
         }
 

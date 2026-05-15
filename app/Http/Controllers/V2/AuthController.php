@@ -72,8 +72,8 @@ class AuthController extends BaseController
             ]);
             return back()
                 ->withInput($request->only('email'))
-                ->withErrors(['login' => $exception->getMessage()])
-                ->with('message', $exception->getMessage())
+                ->withErrors(['login' => 'Login service is currently unavailable. Please try again later.'])
+                ->with('message', 'Login service is currently unavailable. Please try again later.')
                 ->with('message_type', 'danger');
         }
     }

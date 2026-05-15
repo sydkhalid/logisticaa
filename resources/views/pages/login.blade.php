@@ -6,7 +6,7 @@
       <a href="{{ URL::to('login')}}" class="h1">@php $name = App\models\Setting::first(); @endphp {{$name['name']  }}</a>
    </div>
    <div class="card-body">
-      <form method="POST" action="{{ route('login') }}">
+      <form method="POST" action="{{ route('v2.login.submit') }}">
          @csrf
          @if( count($errors) > 0)
          @foreach($errors->all() as $error)
