@@ -6,6 +6,7 @@ use App\Http\Controllers\V2\EpodController;
 use App\Http\Controllers\V2\IntegrationController;
 use App\Http\Controllers\V2\LrTrackingController;
 use App\Http\Controllers\V2\MarketVehicleController;
+use App\Http\Controllers\V2\RedirectController;
 use App\Http\Controllers\V2\ReportController;
 use App\Http\Controllers\V2\SettingController;
 use App\Http\Controllers\V2\SystemLogController;
@@ -15,11 +16,7 @@ use App\Http\Controllers\V2\WeightCorrectionController;
 /** @var \Illuminate\Routing\Router $router */
 
 $router->prefix('v2')->name('v2.')->group(function () use ($router) {
-    $router->get('/', function () {
-        return auth()->check()
-            ? redirect()->route('v2.home')
-            : redirect()->route('v2.login');
-    })->name('index');
+    $router->get('/', [RedirectController::class, 'index'])->name('index');
 
     $router->middleware('guest')->group(function () use ($router) {
         $router->get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -33,10 +30,16 @@ $router->prefix('v2')->name('v2.')->group(function () use ($router) {
 
         $router->get('/home', [DashboardController::class, 'index'])->name('home');
         $router->get('/home/attention/{panel}', [DashboardController::class, 'attention'])->name('home.attention');
-        $router->get('/integrations', [IntegrationController::class, 'index'])->name('integrations.index');
-        $router->post('/integrations/fleetx/refresh-token', [IntegrationController::class, 'refreshFleetToken'])->name('integrations.fleetx.refresh-token');
-        $router->post('/integrations/travis/refresh-token', [IntegrationController::class, 'refreshTravisToken'])->name('integrations.travis.refresh-token');
-        $router->prefix('logs')->name('logs.')->group(function () use ($router) {
+
+        $router->middleware('admin')->group(function () use ($router) {
+            $router->get('/integrations', [IntegrationController::class, 'index'])->name('integrations.index');
+            $router->post('/integrations/fleetx/refresh-token', [IntegrationController::class, 'refreshFleetToken'])->name('integrations.fleetx.refresh-token');
+            $router->post('/integrations/travis/refresh-token', [IntegrationController::class, 'refreshTravisToken'])->name('integrations.travis.refresh-token');
+            $router->get('/settings', [SettingController::class, 'edit'])->name('settings.edit');
+            $router->post('/settings', [SettingController::class, 'update'])->name('settings.update');
+        });
+
+        $router->prefix('logs')->name('logs.')->middleware('admin')->group(function () use ($router) {
             $router->get('/', [SystemLogController::class, 'index'])->name('index');
             $router->get('/data', [SystemLogController::class, 'data'])->name('data');
             $router->get('/export', [SystemLogController::class, 'export'])->name('export');
@@ -53,7 +56,7 @@ $router->prefix('v2')->name('v2.')->group(function () use ($router) {
             $router->get('/{vehicle}', [VehicleController::class, 'show'])->name('show');
             $router->get('/{vehicle}/edit', [VehicleController::class, 'edit'])->name('edit');
             $router->put('/{vehicle}', [VehicleController::class, 'update'])->name('update');
-            $router->delete('/{vehicle}', [VehicleController::class, 'destroy'])->name('destroy');
+            $router->delete('/{vehicle}', [VehicleController::class, 'destroy'])->middleware('admin')->name('destroy');
         });
 
         $router->prefix('market-vehicles')->name('market-vehicles.')->group(function () use ($router) {
@@ -64,9 +67,9 @@ $router->prefix('v2')->name('v2.')->group(function () use ($router) {
             $router->get('/{vehicle}', [MarketVehicleController::class, 'show'])->name('show');
             $router->get('/{vehicle}/edit', [MarketVehicleController::class, 'edit'])->name('edit');
             $router->put('/{vehicle}', [MarketVehicleController::class, 'update'])->name('update');
-            $router->delete('/{vehicle}', [MarketVehicleController::class, 'destroy'])->name('destroy');
+            $router->delete('/{vehicle}', [MarketVehicleController::class, 'destroy'])->middleware('admin')->name('destroy');
             $router->post('/{vehicle}/status', [MarketVehicleController::class, 'status'])->name('status');
-            $router->post('/{vehicle}/stop-tracking', [MarketVehicleController::class, 'stopTracking'])->name('stop-tracking');
+            $router->post('/{vehicle}/stop-tracking', [MarketVehicleController::class, 'stopTracking'])->middleware('admin')->name('stop-tracking');
         });
 
         $router->prefix('lr-trackings')->name('lr-trackings.')->group(function () use ($router) {
@@ -98,14 +101,16 @@ $router->prefix('v2')->name('v2.')->group(function () use ($router) {
             $router->get('/data', [EpodController::class, 'data'])->name('data');
             $router->get('/create', [EpodController::class, 'create'])->name('create');
             $router->post('/', [EpodController::class, 'store'])->name('store');
+            $router->get('/{epod}', [EpodController::class, 'show'])->name('show');
+            $router->get('/{epod}/download', [EpodController::class, 'download'])->name('download');
+            $router->post('/{epod}/retry', [EpodController::class, 'retry'])->name('retry');
+            $router->delete('/{epod}', [EpodController::class, 'destroy'])->middleware('admin')->name('destroy');
         });
 
         $router->prefix('reports')->name('reports.')->group(function () use ($router) {
             $router->get('/', [ReportController::class, 'index'])->name('index');
+            $router->get('/print', [ReportController::class, 'print'])->name('print');
             $router->get('/export/{dataset}', [ReportController::class, 'export'])->name('export');
         });
-
-        $router->get('/settings', [SettingController::class, 'edit'])->name('settings.edit');
-        $router->post('/settings', [SettingController::class, 'update'])->name('settings.update');
     });
 });

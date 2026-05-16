@@ -59,12 +59,12 @@
               <a href="{{ route('v2.logs.export', $filters) }}" class="btn btn-outline-primary">Export Logs</a>
 
               @if ($canManageLogs)
-                <form method="POST" action="{{ route('v2.logs.clear-old') }}" onsubmit="return confirm('Clear logs older than 30 days? This cannot be undone.');">
+                <form method="POST" action="{{ route('v2.logs.clear-old') }}" onsubmit="return window.V2.confirmDelete(this, 'Clear logs older than 30 days? This cannot be undone.');">
                   @csrf
                   <button type="submit" class="btn btn-outline-danger" {{ $oldLogsCount < 1 ? 'disabled' : '' }}>Clear Older Than 30 Days</button>
                 </form>
 
-                <form method="POST" action="{{ route('v2.logs.clear') }}" onsubmit="return confirm('Clear all system logs? This cannot be undone.');">
+                <form method="POST" action="{{ route('v2.logs.clear') }}" onsubmit="return window.V2.confirmDelete(this, 'Clear all system logs? This cannot be undone.');">
                   @csrf
                   <button type="submit" class="btn btn-danger" {{ $allLogsCount < 1 ? 'disabled' : '' }}>Clear All Logs</button>
                 </form>

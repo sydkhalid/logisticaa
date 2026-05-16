@@ -2,8 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\User;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
@@ -14,14 +16,26 @@ class UserSeeder extends Seeder
      */
     public function run()
     {
-        $user = User::create([
-            'name' => 'logisticaa',
-            'email' => 'connect@logisticaa.co.in',
-            'password' => \Hash::make('!Meenakshi1'),
-            'remember_token' => NULL,
-            'bearer_token' => NULL,
-            'created_at' => '2022-02-01 00:40:21',
-            'updated_at' => NULL,
-        ]);
+        $email = trim((string) env('ADMIN_USER_EMAIL', config('integrations.travis.system_email', 'connect@logisticaa.co.in')));
+        $name = trim((string) env('ADMIN_USER_NAME', 'Logisticaa Admin'));
+        $password = (string) env('ADMIN_USER_PASSWORD', '');
+
+        $user = User::query()->where('email', $email)->first() ?: new User();
+        $user->name = $name !== '' ? $name : 'Logisticaa Admin';
+        $user->email = $email;
+        $user->is_admin = true;
+        $user->remember_token = null;
+
+        if ($password !== '') {
+            $user->password = Hash::make($password);
+        } elseif (!$user->exists) {
+            $user->password = Hash::make(Str::password(32));
+
+            if ($this->command) {
+                $this->command->warn('ADMIN_USER_PASSWORD is not set. A random admin password was generated; reset it before login.');
+            }
+        }
+
+        $user->save();
     }
 }

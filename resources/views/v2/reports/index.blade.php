@@ -24,11 +24,13 @@
               <p class="card-description mb-0">Filter operational activity and export the same range as CSV.</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-              <a href="{{ route('v2.reports.export', ['dataset' => 'trackings', 'from' => $filters['from'], 'to' => $filters['to']]) }}" class="btn btn-outline-primary btn-sm">Export Trackings</a>
-              <a href="{{ route('v2.reports.export', ['dataset' => 'vehicles', 'from' => $filters['from'], 'to' => $filters['to']]) }}" class="btn btn-outline-info btn-sm">Export Vehicles</a>
-              <a href="{{ route('v2.reports.export', ['dataset' => 'epods', 'from' => $filters['from'], 'to' => $filters['to']]) }}" class="btn btn-outline-success btn-sm">Export EPOD</a>
+              <a href="{{ route('v2.reports.print', ['from' => $filters['from'], 'to' => $filters['to']]) }}" target="_blank" class="btn btn-primary btn-sm">Print / PDF</a>
+              <a href="{{ route('v2.reports.export', ['dataset' => 'trackings', 'from' => $filters['from'], 'to' => $filters['to']]) }}" class="btn btn-outline-primary btn-sm">CSV Trackings</a>
+              <a href="{{ route('v2.reports.export', ['dataset' => 'trackings', 'from' => $filters['from'], 'to' => $filters['to'], 'format' => 'xls']) }}" class="btn btn-outline-primary btn-sm">Excel Trackings</a>
+              <a href="{{ route('v2.reports.export', ['dataset' => 'vehicles', 'from' => $filters['from'], 'to' => $filters['to'], 'format' => 'xls']) }}" class="btn btn-outline-info btn-sm">Excel Vehicles</a>
+              <a href="{{ route('v2.reports.export', ['dataset' => 'epods', 'from' => $filters['from'], 'to' => $filters['to'], 'format' => 'xls']) }}" class="btn btn-outline-success btn-sm">Excel EPOD</a>
               @if ($weightsEnabled)
-                <a href="{{ route('v2.reports.export', ['dataset' => 'weights', 'from' => $filters['from'], 'to' => $filters['to']]) }}" class="btn btn-outline-warning btn-sm">Export Weights</a>
+                <a href="{{ route('v2.reports.export', ['dataset' => 'weights', 'from' => $filters['from'], 'to' => $filters['to'], 'format' => 'xls']) }}" class="btn btn-outline-warning btn-sm">Excel Weights</a>
               @endif
             </div>
           </div>

@@ -6,6 +6,7 @@
     ['label' => $pageTitle],
   ];
   $isEdit = $formMethod !== 'POST';
+  $defaultLspId = $defaultLspId ?? '';
 @endphp
 
 @section('content')
@@ -39,7 +40,7 @@
               </div>
               <div class="col-md-6 form-group">
                 <label for="lspId">LSP ID</label>
-                <input type="text" class="form-control" id="lspId" name="lspId" value="{{ old('lspId', $weight->lspId ?: '0097457655') }}" {{ $isEdit ? 'readonly' : '' }} required>
+                <input type="text" class="form-control" id="lspId" name="lspId" value="{{ old('lspId', $weight->lspId ?: $defaultLspId) }}" {{ $isEdit || $defaultLspId !== '' ? 'readonly' : '' }} required>
               </div>
               <div class="col-md-6 form-group">
                 <label for="actualWeight">Corrected Weight</label>
@@ -75,7 +76,36 @@
     <script>
       window.addEventListener('DOMContentLoaded', function () {
         var button = document.getElementById('fetch-lr');
+        var lrInput = document.getElementById('lrNumber');
+        var lspInput = document.getElementById('lspId');
+        var weightInput = document.getElementById('actualWeight');
+        var lengthInput = document.getElementById('length');
+        var breadthInput = document.getElementById('breadth');
+        var heightInput = document.getElementById('height');
+
+        function showFetchAlert(icon, title, text) {
+          if (window.V2 && typeof window.V2.fireAlert === 'function') {
+            window.V2.fireAlert({
+              icon: icon,
+              title: title,
+              text: text,
+              confirmButtonText: 'Close'
+            });
+          }
+        }
+
         button.addEventListener('click', function () {
+          var lrNumber = lrInput.value.trim();
+
+          if (!lrNumber) {
+            lrInput.focus();
+            showFetchAlert('warning', 'LR Number Required', 'Enter an LR number before fetching dimensions.');
+            return;
+          }
+
+          button.disabled = true;
+          button.textContent = 'Fetching...';
+
           fetch('{{ route('v2.weight-corrections.fetch-lr') }}', {
             method: 'POST',
             headers: {
@@ -84,24 +114,33 @@
               'Accept': 'application/json'
             },
             body: JSON.stringify({
-              lrNumber: document.getElementById('lrNumber').value
+              lrNumber: lrNumber
             })
           })
             .then(function (response) {
               if (!response.ok) {
-                throw new Error('LR number not found.');
+                return response.json().then(function (payload) {
+                  throw new Error(payload.message || 'LR number not found.');
+                }).catch(function (error) {
+                  throw new Error(error.message || 'LR number not found.');
+                });
               }
               return response.json();
             })
             .then(function (payload) {
-              document.getElementById('lspId').value = payload.lspId || document.getElementById('lspId').value;
-              document.getElementById('actualWeight').value = payload.actualWeight || '';
-              document.getElementById('length').value = payload.length || '';
-              document.getElementById('breadth').value = payload.breadth || '';
-              document.getElementById('height').value = payload.height || '';
+              lspInput.value = payload.lspId || lspInput.value;
+              weightInput.value = payload.actualWeight || '';
+              lengthInput.value = payload.length || '';
+              breadthInput.value = payload.breadth || '';
+              heightInput.value = payload.height || '';
+              showFetchAlert('success', 'LR Loaded', 'Weight and dimension fields were filled from the LR record.');
             })
             .catch(function (error) {
-              window.alert(error.message);
+              showFetchAlert('error', 'LR Fetch Failed', error.message);
+            })
+            .finally(function () {
+              button.disabled = false;
+              button.textContent = 'Fetch';
             });
         });
       });

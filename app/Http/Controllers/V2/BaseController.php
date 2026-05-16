@@ -65,6 +65,11 @@ abstract class BaseController extends Controller
         return $date ? $date->format('d M Y, h:i A') : (string) $value;
     }
 
+    protected function defaultLspId(): string
+    {
+        return trim((string) config('integrations.travis.default_lsp_id', ''));
+    }
+
     protected function datatableResponse(
         \Illuminate\Http\Request $request,
         $baseQuery,

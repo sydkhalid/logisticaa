@@ -29,6 +29,7 @@
                   <th>LR Number</th>
                   <th>Status</th>
                   <th>Created At</th>
+                  <th class="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -53,7 +54,8 @@
           { data: 'lspId', name: 'lspId' },
           { data: 'lrNumber', name: 'lrNumber' },
           { data: 'status', name: 'status' },
-          { data: 'created_at', name: 'created_at' }
+          { data: 'created_at', name: 'created_at' },
+          { data: 'actions', name: 'actions', orderable: false, searchable: false }
         ]
       });
     });

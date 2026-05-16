@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\V2;
 
+use App\Jobs\RegisterMarketVehicleTrackingJob;
+use App\Jobs\StopMarketVehicleTrackingJob;
 use App\Models\Tracking;
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
@@ -40,6 +42,29 @@ class MarketVehicleController extends BaseController
                     . ((int) $vehicle->statusStop === 1 ? 'Stopped' : 'Active')
                     . '</span>';
 
+                $actions = [
+                    $this->actionLink(route('v2.market-vehicles.show', $vehicle), 'View', 'btn-outline-info'),
+                    $this->actionLink(route('v2.market-vehicles.edit', $vehicle), 'Edit', 'btn-outline-primary'),
+                    $this->actionForm(route('v2.market-vehicles.status', $vehicle), 'Check', 'btn-outline-success'),
+                ];
+
+                if ($this->canManageDestructiveActions(request())) {
+                    $actions[] = $this->actionForm(
+                        route('v2.market-vehicles.stop-tracking', $vehicle),
+                        'Stop',
+                        'btn-outline-warning',
+                        'POST',
+                        'Stop SIM tracking for this vehicle?'
+                    );
+                    $actions[] = $this->actionForm(
+                        route('v2.market-vehicles.destroy', $vehicle),
+                        'Delete',
+                        'btn-outline-danger',
+                        'DELETE',
+                        'Remove this market vehicle?'
+                    );
+                }
+
                 return [
                     'index' => $index,
                     'vehicleNo' => e($vehicle->vehicleNo),
@@ -47,25 +72,7 @@ class MarketVehicleController extends BaseController
                     'simProvider' => e($vehicle->simProvider),
                     'expireDate' => e($this->displayDate($vehicle->expireDate)),
                     'statusStop' => $statusBadge,
-                    'actions' => $this->actionGroup([
-                        $this->actionLink(route('v2.market-vehicles.show', $vehicle), 'View', 'btn-outline-info'),
-                        $this->actionLink(route('v2.market-vehicles.edit', $vehicle), 'Edit', 'btn-outline-primary'),
-                        $this->actionForm(route('v2.market-vehicles.status', $vehicle), 'Check', 'btn-outline-success'),
-                        $this->actionForm(
-                            route('v2.market-vehicles.stop-tracking', $vehicle),
-                            'Stop',
-                            'btn-outline-warning',
-                            'POST',
-                            'Stop SIM tracking for this vehicle?'
-                        ),
-                        $this->actionForm(
-                            route('v2.market-vehicles.destroy', $vehicle),
-                            'Delete',
-                            'btn-outline-danger',
-                            'DELETE',
-                            'Remove this market vehicle?'
-                        ),
-                    ]),
+                    'actions' => $this->actionGroup($actions),
                 ];
             }
         );
@@ -88,14 +95,6 @@ class MarketVehicleController extends BaseController
         $expireDate = $this->formatDateTime($validated['expireDate']);
 
         try {
-            $this->integrations->registerSimTracking([
-                'mobileNumber' => $validated['mobileNo'],
-                'vehicleNumber' => $validated['vehicleNo'],
-                'expiryDate' => $expireDate,
-                'simProvider' => $validated['simProvider'],
-                'pingFrequency' => '3600',
-            ], $request->user());
-
             $vehicle = new Vehicle();
             $vehicle->vehicleNo = $validated['vehicleNo'];
             $vehicle->mobileNo = $validated['mobileNo'];
@@ -115,9 +114,22 @@ class MarketVehicleController extends BaseController
                 ->with('message_type', 'danger');
         }
 
+        try {
+            $this->queueSimRegistration($vehicle, $request, 'market-vehicle-create');
+            $message = 'Market vehicle added. FleetX SIM registration has been queued.';
+            $messageType = 'success';
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Market Vehicle Registration Queue Failed', $request, [
+                'vehicle_id' => $vehicle->id,
+                'vehicleNo' => $vehicle->vehicleNo,
+            ], 'warning');
+            $message = 'Market vehicle saved, but FleetX registration could not be queued: ' . $exception->getMessage();
+            $messageType = 'warning';
+        }
+
         return redirect()->route('v2.market-vehicles.index')
-            ->with('message', 'Market vehicle added successfully.')
-            ->with('message_type', 'success');
+            ->with('message', $message)
+            ->with('message_type', $messageType);
     }
 
     public function show($vehicle)
@@ -165,37 +177,11 @@ class MarketVehicleController extends BaseController
         $oldVehicleNo = $vehicle->vehicleNo;
         $oldMobileNo = trim((string) $vehicle->mobileNo);
         $oldSimProvider = strtoupper(trim((string) $vehicle->simProvider));
-
+        $wasStopped = (int) $vehicle->statusStop === 1;
         $simChanged = $oldMobileNo !== $validated['mobileNo']
             || $oldSimProvider !== $validated['simProvider'];
 
         try {
-            if (
-                $simChanged
-                && (int) $vehicle->statusStop !== 1
-                && $oldMobileNo !== ''
-                && $oldSimProvider !== ''
-            ) {
-                try {
-                    $this->integrations->stopSimTracking($oldMobileNo, $oldSimProvider, $request->user());
-                } catch (\Throwable $exception) {
-                    $this->logHandledException($exception, 'Market Vehicle Old SIM Cleanup Failed', $request, [
-                        'vehicle_id' => $vehicle->id,
-                        'vehicleNo' => $oldVehicleNo,
-                        'mobileNo' => $oldMobileNo,
-                        'simProvider' => $oldSimProvider,
-                    ], 'warning');
-                }
-            }
-
-            $this->integrations->registerSimTracking([
-                'mobileNumber' => $validated['mobileNo'],
-                'vehicleNumber' => $validated['vehicleNo'],
-                'expiryDate' => $expireDate,
-                'simProvider' => $validated['simProvider'],
-                'pingFrequency' => '3600',
-            ], $request->user());
-
             DB::transaction(function () use ($vehicle, $validated, $expireDate, $oldVehicleNo) {
                 $vehicle->vehicleNo = $validated['vehicleNo'];
                 $vehicle->mobileNo = $validated['mobileNo'];
@@ -221,9 +207,31 @@ class MarketVehicleController extends BaseController
                 ->with('message_type', 'danger');
         }
 
+        try {
+            if (
+                $simChanged
+                && !$wasStopped
+                && $oldMobileNo !== ''
+                && $oldSimProvider !== ''
+            ) {
+                $this->queueSimStop($oldMobileNo, $oldSimProvider, $vehicle->id, $oldVehicleNo, $request, 'market-vehicle-old-sim-cleanup');
+            }
+
+            $this->queueSimRegistration($vehicle->fresh(), $request, 'market-vehicle-update');
+            $message = 'Market vehicle updated. FleetX SIM updates have been queued.';
+            $messageType = 'success';
+        } catch (\Throwable $exception) {
+            $this->logHandledException($exception, 'Market Vehicle Update Queue Failed', $request, [
+                'vehicle_id' => $vehicle->id,
+                'vehicleNo' => $validated['vehicleNo'],
+            ], 'warning');
+            $message = 'Market vehicle updated, but FleetX queueing failed: ' . $exception->getMessage();
+            $messageType = 'warning';
+        }
+
         return redirect()->route('v2.market-vehicles.index')
-            ->with('message', 'Market vehicle updated successfully.')
-            ->with('message_type', 'success');
+            ->with('message', $message)
+            ->with('message_type', $messageType);
     }
 
     public function status(Request $request, $vehicle)
@@ -266,9 +274,9 @@ class MarketVehicleController extends BaseController
         }
 
         try {
-            $this->integrations->stopSimTracking($vehicle->mobileNo, $vehicle->simProvider, $request->user());
             $vehicle->statusStop = 1;
             $vehicle->save();
+            $this->queueSimStop($vehicle->mobileNo, $vehicle->simProvider, $vehicle->id, $vehicle->vehicleNo, $request, 'market-vehicle-stop', true);
         } catch (\Throwable $exception) {
             $this->logHandledException($exception, 'Market Vehicle Stop Tracking Failed', $request, [
                 'vehicle_id' => $vehicle->id,
@@ -281,7 +289,7 @@ class MarketVehicleController extends BaseController
         }
 
         return back()
-            ->with('message', 'SIM tracking stopped successfully.')
+            ->with('message', 'SIM tracking stop has been queued.')
             ->with('message_type', 'success');
     }
 
@@ -295,15 +303,15 @@ class MarketVehicleController extends BaseController
                 ->with('message_type', 'warning');
         }
 
-        try {
-            if (
-                (int) $vehicle->statusStop !== 1
-                && trim((string) $vehicle->mobileNo) !== ''
-                && trim((string) $vehicle->simProvider) !== ''
-            ) {
-                $this->integrations->stopSimTracking($vehicle->mobileNo, $vehicle->simProvider, $request->user());
-            }
+        $shouldStopRemote = (int) $vehicle->statusStop !== 1
+            && trim((string) $vehicle->mobileNo) !== ''
+            && trim((string) $vehicle->simProvider) !== '';
+        $mobileNo = trim((string) $vehicle->mobileNo);
+        $simProvider = strtoupper(trim((string) $vehicle->simProvider));
+        $vehicleNo = $vehicle->vehicleNo;
+        $vehicleId = (int) $vehicle->id;
 
+        try {
             $vehicle->delete();
         } catch (\Throwable $exception) {
             $this->logHandledException($exception, 'Market Vehicle Delete Failed', $request, [
@@ -316,9 +324,28 @@ class MarketVehicleController extends BaseController
                 ->with('message_type', 'danger');
         }
 
+        $message = 'Market vehicle removed successfully.';
+        $messageType = 'success';
+
+        if ($shouldStopRemote) {
+            try {
+                $this->queueSimStop($mobileNo, $simProvider, $vehicleId, $vehicleNo, $request, 'market-vehicle-delete');
+                $message = 'Market vehicle removed. FleetX SIM stop has been queued.';
+            } catch (\Throwable $exception) {
+                $this->logHandledException($exception, 'Market Vehicle Delete Stop Queue Failed', $request, [
+                    'vehicle_id' => $vehicleId,
+                    'vehicleNo' => $vehicleNo,
+                    'mobileNo' => $mobileNo,
+                    'simProvider' => $simProvider,
+                ], 'warning');
+                $message = 'Market vehicle removed, but FleetX SIM stop could not be queued: ' . $exception->getMessage();
+                $messageType = 'warning';
+            }
+        }
+
         return redirect()->route('v2.market-vehicles.index')
-            ->with('message', 'Market vehicle removed successfully.')
-            ->with('message_type', 'success');
+            ->with('message', $message)
+            ->with('message_type', $messageType);
     }
 
     private function validatePayload(Request $request, ?Vehicle $vehicle = null): array
@@ -358,5 +385,53 @@ class MarketVehicleController extends BaseController
             ->where('vehicleNo', $vehicleNo)
             ->where('status', 0)
             ->exists();
+    }
+
+    private function queueSimRegistration(Vehicle $vehicle, Request $request, string $reason): void
+    {
+        RegisterMarketVehicleTrackingJob::dispatch(
+            (int) $vehicle->id,
+            $this->simTrackingPayload($vehicle),
+            optional($request->user())->id,
+            $reason
+        );
+    }
+
+    private function queueSimStop(
+        string $mobileNo,
+        string $simProvider,
+        ?int $vehicleId,
+        ?string $vehicleNo,
+        Request $request,
+        string $reason,
+        bool $markStopped = false
+    ): void {
+        StopMarketVehicleTrackingJob::dispatch(
+            $mobileNo,
+            $simProvider,
+            $vehicleId,
+            $vehicleNo,
+            optional($request->user())->id,
+            $reason,
+            $markStopped
+        );
+    }
+
+    private function simTrackingPayload(Vehicle $vehicle): array
+    {
+        return [
+            'mobileNumber' => $vehicle->mobileNo,
+            'vehicleNumber' => $vehicle->vehicleNo,
+            'expiryDate' => $this->formatDateTime($vehicle->expireDate),
+            'simProvider' => $vehicle->simProvider,
+            'pingFrequency' => '3600',
+        ];
+    }
+
+    private function canManageDestructiveActions(Request $request): bool
+    {
+        $user = $request->user();
+
+        return $user && method_exists($user, 'isAdmin') && $user->isAdmin();
     }
 }

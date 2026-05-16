@@ -21,6 +21,7 @@
     'danger' => 'dashboard-alert-tag dashboard-alert-tag--critical',
     'emergency' => 'dashboard-alert-tag dashboard-alert-tag--critical',
   ];
+  $canManageSystem = $canManageSystem ?? false;
   $summaryCards = [
     [
       'label' => 'Total LR',
@@ -239,7 +240,9 @@
                 <p class="card-title mb-1">Insights</p>
                 <p class="card-description mb-0">Prioritized operating signals grouped by severity so urgent work stands out first.</p>
               </div>
-              <a href="{{ route('v2.logs.index') }}" class="btn btn-outline-primary btn-sm">System Logs</a>
+              @if($canManageSystem)
+                <a href="{{ route('v2.logs.index') }}" class="btn btn-outline-primary btn-sm">System Logs</a>
+              @endif
             </div>
 
             <div class="dashboard-insight-groups">
@@ -331,7 +334,7 @@
   </div>
 
   <div class="row">
-    <div class="col-xl-8 grid-margin stretch-card">
+    <div class="{{ $canManageSystem ? 'col-xl-8' : 'col-12' }} grid-margin stretch-card">
       <div class="card dashboard-surface">
         <div class="card-body">
           <div class="dashboard-card-head">
@@ -387,35 +390,37 @@
       </div>
     </div>
 
-    <div class="col-xl-4 grid-margin stretch-card">
-      <div class="card dashboard-surface">
-        <div class="card-body">
-          <div class="dashboard-card-head">
-            <div>
-              <p class="card-title mb-1">Recent Alerts</p>
-              <p class="card-description mb-0">Latest warnings and failures from the operational log stream.</p>
+    @if($canManageSystem)
+      <div class="col-xl-4 grid-margin stretch-card">
+        <div class="card dashboard-surface">
+          <div class="card-body">
+            <div class="dashboard-card-head">
+              <div>
+                <p class="card-title mb-1">Recent Alerts</p>
+                <p class="card-description mb-0">Latest warnings and failures from the operational log stream.</p>
+              </div>
+              <a href="{{ route('v2.logs.index') }}" class="btn btn-outline-primary btn-sm">Open Logs</a>
             </div>
-            <a href="{{ route('v2.logs.index') }}" class="btn btn-outline-primary btn-sm">Open Logs</a>
-          </div>
 
-          <div class="dashboard-alert-list">
-            @forelse ($recentAlerts as $alert)
-              <a href="{{ route('v2.logs.show', $alert) }}" class="dashboard-alert-card">
-                <div class="dashboard-alert-card__head">
-                  <span class="{{ $alertTagClasses[$alert->type] ?? 'dashboard-alert-tag dashboard-alert-tag--info' }}">
-                    {{ strtoupper($alert->type) }}
-                  </span>
-                  <small>{{ $formatDate($alert->created_at) }}</small>
-                </div>
-                <strong class="dashboard-alert-card__title">{{ $alert->title ?: 'Untitled log entry' }}</strong>
-              </a>
-            @empty
-              <div class="dashboard-empty-state">No warning or failure logs were found for the latest activity window.</div>
-            @endforelse
+            <div class="dashboard-alert-list">
+              @forelse ($recentAlerts as $alert)
+                <a href="{{ route('v2.logs.show', $alert) }}" class="dashboard-alert-card">
+                  <div class="dashboard-alert-card__head">
+                    <span class="{{ $alertTagClasses[$alert->type] ?? 'dashboard-alert-tag dashboard-alert-tag--info' }}">
+                      {{ strtoupper($alert->type) }}
+                    </span>
+                    <small>{{ $formatDate($alert->created_at) }}</small>
+                  </div>
+                  <strong class="dashboard-alert-card__title">{{ $alert->title ?: 'Untitled log entry' }}</strong>
+                </a>
+              @empty
+                <div class="dashboard-empty-state">No warning or failure logs were found for the latest activity window.</div>
+              @endforelse
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    @endif
   </div>
 @endsection
 

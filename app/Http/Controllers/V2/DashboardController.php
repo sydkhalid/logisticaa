@@ -25,6 +25,7 @@ class DashboardController extends BaseController
         $weekStart = $now->copy()->subDays(6)->startOfDay();
         $weightsEnabled = Schema::hasTable('weights');
         $analytics = $this->integrations->cachedFleetAnalytics();
+        $canManageSystem = $this->canManageSystem();
 
         $trackingStatusCounts = Tracking::query()
             ->selectRaw('status, COUNT(*) AS aggregate')
@@ -200,8 +201,8 @@ class DashboardController extends BaseController
                 'type' => 'warning',
                 'title' => 'Location gaps are affecting live visibility',
                 'description' => $locationGapCount . ' active LR records are still missing coordinates or a resolved location.',
-                'action_label' => 'Check Integrations',
-                'action_url' => route('v2.integrations.index'),
+                'action_label' => $canManageSystem ? 'Check Integrations' : 'Review Active LR',
+                'action_url' => $canManageSystem ? route('v2.integrations.index') : route('v2.lr-trackings.index'),
             ];
         }
 
@@ -220,8 +221,8 @@ class DashboardController extends BaseController
                 'type' => 'info',
                 'title' => 'Some live vehicles are disconnected',
                 'description' => $fleetDisconnected . ' FleetX vehicles are currently disconnected and may not report live positions.',
-                'action_label' => 'Review Integrations',
-                'action_url' => route('v2.integrations.index'),
+                'action_label' => $canManageSystem ? 'Review Integrations' : 'Open Market Vehicles',
+                'action_url' => $canManageSystem ? route('v2.integrations.index') : route('v2.market-vehicles.index'),
             ];
         }
 
@@ -257,8 +258,8 @@ class DashboardController extends BaseController
                 'label' => 'Location Gaps',
                 'count' => $locationGapCount,
                 'description' => 'Active LR missing resolved location',
-                'action_label' => 'Check Integrations',
-                'action_url' => route('v2.integrations.index'),
+                'action_label' => $canManageSystem ? 'Check Integrations' : 'Review Active LR',
+                'action_url' => $canManageSystem ? route('v2.integrations.index') : route('v2.lr-trackings.index'),
             ],
         ];
 
@@ -317,6 +318,7 @@ class DashboardController extends BaseController
                 'weights' => $weightTrend,
             ],
             'weightsEnabled' => $weightsEnabled,
+            'canManageSystem' => $canManageSystem,
             'insightGroups' => $insightGroups,
             'attentionTabs' => $attentionTabs,
             'recentTrackings' => Tracking::query()
@@ -404,6 +406,8 @@ class DashboardController extends BaseController
 
     private function resolveAttentionPanel(string $panel, Carbon $now): ?array
     {
+        $canManageSystem = $this->canManageSystem();
+
         if ($panel === 'delayed') {
             $records = Tracking::query()
                 ->where('status', 0)
@@ -454,8 +458,8 @@ class DashboardController extends BaseController
                 'key' => $panel,
                 'title' => 'Location Gap Queue',
                 'description' => 'Active LR where live coordinates or location names are still missing.',
-                'action_label' => 'Check Integrations',
-                'action_url' => route('v2.integrations.index'),
+                'action_label' => $canManageSystem ? 'Check Integrations' : 'Review Active LR',
+                'action_url' => $canManageSystem ? route('v2.integrations.index') : route('v2.lr-trackings.index'),
                 'empty_message' => 'No active LR records are missing location details.',
                 'count' => $records->count(),
                 'records' => $records,
@@ -463,5 +467,12 @@ class DashboardController extends BaseController
         }
 
         return null;
+    }
+
+    private function canManageSystem(): bool
+    {
+        $user = auth()->user();
+
+        return $user && method_exists($user, 'isAdmin') && $user->isAdmin();
     }
 }

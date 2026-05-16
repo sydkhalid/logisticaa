@@ -10,6 +10,7 @@ return [
     'travis' => [
         'system_email' => env('TRAVIS_SYSTEM_EMAIL', 'connect@logisticaa.co.in'),
         'system_password' => env('TRAVIS_SYSTEM_PASSWORD'),
+        'default_lsp_id' => env('TRAVIS_DEFAULT_LSP_ID'),
         'verify_tls' => env('TRAVIS_VERIFY_TLS', true),
         'ca_bundle' => env('TRAVIS_CA_BUNDLE'),
     ],

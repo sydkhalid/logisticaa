@@ -345,6 +345,94 @@
     });
   }
 
+  function formNeedsValidation(form) {
+    return form &&
+      form.tagName === 'FORM' &&
+      form.getAttribute('data-skip-validation') !== '1' &&
+      (form.hasAttribute('data-v2-validate') || form.classList.contains('forms-sample'));
+  }
+
+  function firstInvalidField(form) {
+    return form.querySelector(':invalid');
+  }
+
+  function setFormButtonsDisabled(form, disabled) {
+    var buttons = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+
+    Array.prototype.forEach.call(buttons, function (button) {
+      if (disabled) {
+        if (!button.hasAttribute('data-original-label')) {
+          button.setAttribute('data-original-label', button.textContent || button.value || '');
+        }
+
+        if (button.tagName === 'BUTTON') {
+          button.textContent = button.getAttribute('data-loading-label') || 'Please wait...';
+        } else {
+          button.value = button.getAttribute('data-loading-label') || 'Please wait...';
+        }
+
+        button.disabled = true;
+      } else {
+        if (button.hasAttribute('data-original-label')) {
+          if (button.tagName === 'BUTTON') {
+            button.textContent = button.getAttribute('data-original-label');
+          } else {
+            button.value = button.getAttribute('data-original-label');
+          }
+        }
+
+        button.disabled = false;
+      }
+    });
+  }
+
+  function initFormValidation() {
+    Array.prototype.forEach.call(document.querySelectorAll('form'), function (form) {
+      if (formNeedsValidation(form)) {
+        form.setAttribute('novalidate', 'novalidate');
+      }
+    });
+
+    document.addEventListener('submit', function (event) {
+      var form = event.target;
+      var invalidField;
+
+      if (!formNeedsValidation(form)) {
+        return;
+      }
+
+      form.setAttribute('novalidate', 'novalidate');
+      form.classList.add('was-validated');
+
+      if (!form.checkValidity()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        invalidField = firstInvalidField(form);
+
+        if (invalidField && typeof invalidField.focus === 'function') {
+          invalidField.focus({ preventScroll: false });
+        }
+
+        fireAlert({
+          icon: 'warning',
+          title: 'Check Required Fields',
+          text: 'Please complete the highlighted fields before continuing.',
+          confirmButtonText: 'Close'
+        });
+
+        return;
+      }
+
+      if (form.getAttribute('data-disable-submit') !== '0') {
+        window.setTimeout(function () {
+          if (!event.defaultPrevented) {
+            setFormButtonsDisabled(form, true);
+          }
+        }, 0);
+      }
+    });
+  }
+
   function initDataTable(selector, options) {
     var table;
     var settings;
@@ -443,6 +531,7 @@
     initGlobalAjaxHandlers();
     initFetchLoader();
     initLinkLoader();
+    initFormValidation();
     initFormLoader();
     readFlashMessages();
   });
@@ -453,6 +542,7 @@
     fireAlert: fireAlert,
     hideLoader: hideLoader,
     initDataTable: initDataTable,
+    setFormButtonsDisabled: setFormButtonsDisabled,
     resetLoaderState: resetLoaderState,
     showLoader: showLoader
   };

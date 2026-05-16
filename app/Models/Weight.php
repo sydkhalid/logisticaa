@@ -6,5 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Weight extends Model
 {
-    //
+    public function tracking()
+    {
+        return $this->belongsTo(Tracking::class);
+    }
 }

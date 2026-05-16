@@ -1,3 +1,6 @@
+@php
+  $isAdmin = auth()->check() && method_exists(auth()->user(), 'isAdmin') && auth()->user()->isAdmin();
+@endphp
 <nav class="navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
   <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-start">
     <a class="navbar-brand brand-logo me-5 brand-lockup" href="{{ route('v2.home') }}" aria-label="{{ $appName }}">
@@ -23,9 +26,11 @@
           </div>
         </a>
         <div class="dropdown-menu dropdown-menu-right navbar-dropdown" aria-labelledby="profileDropdown">
-          <a class="dropdown-item" href="{{ route('v2.settings.edit') }}">
-            <i class="ti-settings text-primary"></i> Settings
-          </a>
+          @if($isAdmin)
+            <a class="dropdown-item" href="{{ route('v2.settings.edit') }}">
+              <i class="ti-settings text-primary"></i> Settings
+            </a>
+          @endif
           <form method="POST" action="{{ route('v2.logout') }}">
             @csrf
             <button type="submit" class="dropdown-item">

@@ -40,7 +40,7 @@
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="lspId">LspId <span class="text-danger">(Required)</span></label>
-                                    <input value="0097457655" type="number" id="lspId" name ="lspId" class="form-control" placeholder="lspId" readonly>
+                                    <input value="{{ config('integrations.travis.default_lsp_id') }}" type="number" id="lspId" name ="lspId" class="form-control" placeholder="lspId" {{ config('integrations.travis.default_lsp_id') ? 'readonly' : '' }}>
                                 </div>
                             </div>
                             <div class="col-md-6">

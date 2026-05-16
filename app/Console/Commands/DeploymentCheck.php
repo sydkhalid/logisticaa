@@ -145,6 +145,9 @@ class DeploymentCheck extends Command
                 'FLEETX_API_PASSWORD',
                 'TRAVIS_SYSTEM_EMAIL',
                 'TRAVIS_SYSTEM_PASSWORD',
+                'TRAVIS_DEFAULT_LSP_ID',
+                'ADMIN_USER_EMAIL',
+                'ADMIN_USER_PASSWORD',
             ]);
         }
 
@@ -154,7 +157,7 @@ class DeploymentCheck extends Command
             }
         }
 
-        foreach (['DB_PASSWORD', 'TRAVIS_CA_BUNDLE', 'LOG_ADMIN_EMAILS', 'MYSQLDUMP_BINARY'] as $key) {
+        foreach (['DB_PASSWORD', 'TRAVIS_CA_BUNDLE', 'LOG_ADMIN_EMAILS', 'MYSQLDUMP_BINARY', 'ADMIN_USER_NAME'] as $key) {
             if (!array_key_exists($key, $envValues)) {
                 $warnings[] = $key . ' is not present in .env. Add it explicitly if the environment depends on it.';
             }

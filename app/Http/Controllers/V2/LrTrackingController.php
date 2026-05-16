@@ -56,6 +56,7 @@ class LrTrackingController extends BaseController
             'lrStatuses' => array_values(array_diff(ExternalLogisticsService::lrStatuses(), ['Shipment Delivered'])),
             'truckTypes' => ExternalLogisticsService::truckTypes(),
             'truckTonnages' => ExternalLogisticsService::truckTonnages(),
+            'defaultLspId' => $this->defaultLspId(),
             'formAction' => route('v2.lr-trackings.store'),
             'formMethod' => 'POST',
         ]);
@@ -126,6 +127,9 @@ class LrTrackingController extends BaseController
         $tracking->truckType = $validated['truckType'] ?? null;
         $tracking->truckTonnage = $validated['truckTonnage'] ?? null;
         $tracking->vehicleNo = $vehicle->vehicleNo;
+        if (Schema::hasColumn('trackings', 'vehicle_id')) {
+            $tracking->vehicle_id = $vehicle->id;
+        }
         $tracking->deliveryNotes = $validated['deliveryNotes'] ?? null;
         $tracking->status = 0;
 

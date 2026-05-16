@@ -5,6 +5,7 @@
     ['label' => 'LR Tracking', 'url' => route('v2.lr-trackings.index')],
     ['label' => 'Create'],
   ];
+  $defaultLspId = $defaultLspId ?? '';
 @endphp
 
 @section('content')
@@ -32,7 +33,7 @@
               </div>
               <div class="col-md-4 form-group">
                 <label for="lspId">LSP ID</label>
-                <input type="text" class="form-control" id="lspId" name="lspId" value="{{ old('lspId', '0097457655') }}" required readonly>
+                <input type="text" class="form-control" id="lspId" name="lspId" value="{{ old('lspId', $defaultLspId) }}" required {{ $defaultLspId !== '' ? 'readonly' : '' }}>
               </div>
               <div class="col-md-4 form-group">
                 <label for="lrNumber">LR Number</label>
@@ -129,6 +130,17 @@
       var notice = document.getElementById('vehicle-approval');
       var submit = document.getElementById('lr-submit');
 
+      function showVehicleAlert(icon, title, text) {
+        if (window.V2 && typeof window.V2.fireAlert === 'function') {
+          window.V2.fireAlert({
+            icon: icon,
+            title: title,
+            text: text,
+            confirmButtonText: 'Close'
+          });
+        }
+      }
+
       function checkVehicle() {
         if (!vehicleSelect.value) {
           notice.textContent = 'Vehicle approval will be checked automatically.';
@@ -153,11 +165,15 @@
             notice.textContent = payload.message;
             notice.className = 'small mt-2 ' + (payload.approved ? 'text-success' : 'text-danger');
             submit.disabled = !payload.approved;
+            if (!payload.approved) {
+              showVehicleAlert('warning', 'Vehicle Not Ready', payload.message);
+            }
           })
           .catch(function () {
             notice.textContent = 'Vehicle approval check failed.';
             notice.className = 'small mt-2 text-danger';
             submit.disabled = false;
+            showVehicleAlert('error', 'Approval Check Failed', 'Unable to check vehicle approval right now.');
           });
       }
 

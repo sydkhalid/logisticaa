@@ -32,7 +32,7 @@
                             <div class="col-md-4">
                                 <div class="form-group">
                                     <label for="lspId">LspId</label>
-                                    <input value="0097457655" type="text" id="lspId" name ="lspId" class="form-control" placeholder="lspId" readonly>
+                                    <input value="{{ config('integrations.travis.default_lsp_id') }}" type="text" id="lspId" name ="lspId" class="form-control" placeholder="lspId" {{ config('integrations.travis.default_lsp_id') ? 'readonly' : '' }}>
                                 </div>
                             </div>
                             <div class="col-md-4">

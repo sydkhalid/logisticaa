@@ -9,6 +9,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\TrackController;
 use App\Http\Controllers\VehicleotherController;
 use App\Http\Controllers\WeightController;
+use App\Http\Controllers\LegacyRedirectController;
 use App\Http\Controllers\V2\AuthController as V2AuthController;
 
 /*
@@ -22,85 +23,35 @@ use App\Http\Controllers\V2\AuthController as V2AuthController;
 |
 */
 
-Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('v2.home')
-        : redirect()->route('v2.login');
-})->name('index');
-Route::get('/login', function () {
-    return auth()->check()
-        ? redirect()->route('v2.home')
-        : redirect()->route('v2.login');
-})->name('login');
+Route::get('/', [LegacyRedirectController::class, 'index'])->name('index');
+Route::get('/login', [LegacyRedirectController::class, 'index'])->name('login');
 Route::post('/login', [V2AuthController::class, 'login'])
     ->middleware('throttle:5,1')
     ->name('login.submit');
 
 Route::group(['middleware' => ['auth']], function () {
     //home
-    Route::get('/home', function () {
-        return redirect()->route('v2.home');
-    })->name('home');
-    Route::get('/dashboard', function () {
-        return redirect()->route('v2.home');
-    });
-    Route::get('vehicle/create', function () {
-        return redirect()->route('v2.vehicles.create');
-    });
-    Route::get('vehicle/{vehicle}/edit', function ($vehicle) {
-        return redirect()->route('v2.vehicles.edit', $vehicle);
-    });
-    Route::get('vehicle/{vehicle}', function ($vehicle) {
-        return redirect()->route('v2.vehicles.show', $vehicle);
-    });
-    Route::get('vehicle', function () {
-        return redirect()->route('v2.vehicles.index');
-    });
-    Route::get('vehicleOther/create', function () {
-        return redirect()->route('v2.market-vehicles.create');
-    });
-    Route::get('vehicleOther/{vehicle}/edit', function ($vehicle) {
-        return redirect()->route('v2.market-vehicles.edit', $vehicle);
-    });
-    Route::get('vehicleOther/{vehicle}', function ($vehicle) {
-        return redirect()->route('v2.market-vehicles.show', $vehicle);
-    });
-    Route::get('vehicleOther', function () {
-        return redirect()->route('v2.market-vehicles.index');
-    });
-    Route::get('lrtracking/create', function () {
-        return redirect()->route('v2.lr-trackings.create');
-    });
-    Route::get('lrtracking/{tracking}/edit', function ($tracking) {
-        return redirect()->route('v2.lr-trackings.edit', $tracking);
-    });
-    Route::get('lrtracking/{tracking}', function ($tracking) {
-        return redirect()->route('v2.lr-trackings.show', $tracking);
-    });
-    Route::get('lrtracking', function () {
-        return redirect()->route('v2.lr-trackings.index');
-    });
-    Route::get('delivered_list', function () {
-        return redirect()->route('v2.lr-trackings.completed');
-    })->name('delivered_list');
-    Route::get('/epod', function () {
-        return redirect()->route('v2.epods.index');
-    })->name('epod');
-    Route::get('epod/add_epod', function () {
-        return redirect()->route('v2.epods.create');
-    })->name('add_epod');
-    Route::get('weight-correction/create', function () {
-        return redirect()->route('v2.weight-corrections.create');
-    });
-    Route::get('weight-correction/{weight}/edit', function ($weight) {
-        return redirect()->route('v2.weight-corrections.edit', $weight);
-    });
-    Route::get('weight-correction', function () {
-        return redirect()->route('v2.weight-corrections.index');
-    });
-    Route::get('settings', function () {
-        return redirect()->route('v2.settings.edit');
-    });
+    Route::get('/home', [LegacyRedirectController::class, 'home'])->name('home');
+    Route::get('/dashboard', [LegacyRedirectController::class, 'home']);
+    Route::get('vehicle/create', [LegacyRedirectController::class, 'vehicleCreate']);
+    Route::get('vehicle/{vehicle}/edit', [LegacyRedirectController::class, 'vehicleEdit']);
+    Route::get('vehicle/{vehicle}', [LegacyRedirectController::class, 'vehicleShow']);
+    Route::get('vehicle', [LegacyRedirectController::class, 'vehicleIndex']);
+    Route::get('vehicleOther/create', [LegacyRedirectController::class, 'marketVehicleCreate']);
+    Route::get('vehicleOther/{vehicle}/edit', [LegacyRedirectController::class, 'marketVehicleEdit']);
+    Route::get('vehicleOther/{vehicle}', [LegacyRedirectController::class, 'marketVehicleShow']);
+    Route::get('vehicleOther', [LegacyRedirectController::class, 'marketVehicleIndex']);
+    Route::get('lrtracking/create', [LegacyRedirectController::class, 'lrTrackingCreate']);
+    Route::get('lrtracking/{tracking}/edit', [LegacyRedirectController::class, 'lrTrackingEdit']);
+    Route::get('lrtracking/{tracking}', [LegacyRedirectController::class, 'lrTrackingShow']);
+    Route::get('lrtracking', [LegacyRedirectController::class, 'lrTrackingIndex']);
+    Route::get('delivered_list', [LegacyRedirectController::class, 'lrTrackingCompleted'])->name('delivered_list');
+    Route::get('/epod', [LegacyRedirectController::class, 'epodIndex'])->name('epod');
+    Route::get('epod/add_epod', [LegacyRedirectController::class, 'epodCreate'])->name('add_epod');
+    Route::get('weight-correction/create', [LegacyRedirectController::class, 'weightCorrectionCreate']);
+    Route::get('weight-correction/{weight}/edit', [LegacyRedirectController::class, 'weightCorrectionEdit']);
+    Route::get('weight-correction', [LegacyRedirectController::class, 'weightCorrectionIndex']);
+    Route::get('settings', [LegacyRedirectController::class, 'settings']);
     // vehicle
     Route::resource('vehicle', VehicleController::class);
     Route::resource('vehicleOther', VehicleotherController::class);

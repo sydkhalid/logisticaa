@@ -5,6 +5,7 @@
     ['label' => 'EPOD Uploads', 'url' => route('v2.epods.index')],
     ['label' => 'Upload'],
   ];
+  $defaultLspId = $defaultLspId ?? '';
 @endphp
 
 @section('content')
@@ -21,7 +22,7 @@
             <div class="row">
               <div class="col-md-4 form-group">
                 <label for="lspId">LSP ID</label>
-                <input type="text" class="form-control" id="lspId" name="lspId" value="{{ old('lspId', '0097457655') }}" readonly required>
+                <input type="text" class="form-control" id="lspId" name="lspId" value="{{ old('lspId', $defaultLspId) }}" {{ $defaultLspId !== '' ? 'readonly' : '' }} required>
               </div>
               <div class="col-md-4 form-group">
                 <label for="lrNumber">LR Number</label>

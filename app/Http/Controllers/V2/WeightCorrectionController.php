@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\V2;
 
+use App\Jobs\SyncWeightCorrectionJob;
 use App\Models\Tracking;
 use App\Models\Weight;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class WeightCorrectionController extends BaseController
 {
@@ -54,6 +56,7 @@ class WeightCorrectionController extends BaseController
             'pageTitle' => 'Add Weight Correction',
             'weight' => new Weight(),
             'recentTrackings' => Tracking::query()->latest('id')->limit(20)->get(['lrNumber']),
+            'defaultLspId' => $this->defaultLspId(),
             'formAction' => route('v2.weight-corrections.store'),
             'formMethod' => 'POST',
         ]);
@@ -81,6 +84,8 @@ class WeightCorrectionController extends BaseController
                 ->with('message_type', 'warning');
         }
 
+        $tracking = $this->findTracking($validated['lspId'], $validated['lrNumber']);
+
         $weight = new Weight();
         $weight->lspId = $validated['lspId'];
         $weight->lrNumber = $validated['lrNumber'];
@@ -88,6 +93,9 @@ class WeightCorrectionController extends BaseController
         $weight->length = $validated['length'];
         $weight->breadth = $validated['breadth'];
         $weight->height = $validated['height'];
+        if ($tracking && Schema::hasColumn('weights', 'tracking_id')) {
+            $weight->tracking_id = $tracking->id;
+        }
 
         try {
             $weight->save();
@@ -104,16 +112,16 @@ class WeightCorrectionController extends BaseController
         }
 
         try {
-            $this->integrations->syncWeightCorrection($weight, false, $request->user());
-            $message = 'Weight correction saved successfully.';
+            $this->queueWeightSync($weight, false, $request, 'weight-correction-create');
+            $message = 'Weight correction saved. Travis sync has been queued.';
             $messageType = 'success';
         } catch (\Throwable $exception) {
-            $this->logHandledException($exception, 'Weight Correction Sync Failed After Create', $request, [
+            $this->logHandledException($exception, 'Weight Correction Sync Queue Failed After Create', $request, [
                 'weight_id' => $weight->id,
                 'lrNumber' => $weight->lrNumber,
                 'lspId' => $weight->lspId,
             ], 'warning');
-            $message = 'Weight saved, but sync failed: ' . $exception->getMessage();
+            $message = 'Weight saved, but Travis sync could not be queued: ' . $exception->getMessage();
             $messageType = 'warning';
         }
 
@@ -128,6 +136,7 @@ class WeightCorrectionController extends BaseController
             'pageTitle' => 'Re-Correct Weight',
             'weight' => $weight,
             'recentTrackings' => Tracking::query()->latest('id')->limit(20)->get(['lrNumber']),
+            'defaultLspId' => $this->defaultLspId(),
             'formAction' => route('v2.weight-corrections.update', $weight),
             'formMethod' => 'PUT',
         ]);
@@ -146,6 +155,12 @@ class WeightCorrectionController extends BaseController
         $weight->length = $validated['length'];
         $weight->breadth = $validated['breadth'];
         $weight->height = $validated['height'];
+        if (!$weight->tracking_id && Schema::hasColumn('weights', 'tracking_id')) {
+            $tracking = $this->findTracking($weight->lspId, $weight->lrNumber);
+            if ($tracking) {
+                $weight->tracking_id = $tracking->id;
+            }
+        }
 
         try {
             $weight->save();
@@ -163,16 +178,16 @@ class WeightCorrectionController extends BaseController
         }
 
         try {
-            $this->integrations->syncWeightCorrection($weight, true, $request->user());
-            $message = 'Weight re-corrected successfully.';
+            $this->queueWeightSync($weight, true, $request, 'weight-correction-update');
+            $message = 'Weight re-corrected. Travis sync has been queued.';
             $messageType = 'success';
         } catch (\Throwable $exception) {
-            $this->logHandledException($exception, 'Weight Correction Sync Failed After Update', $request, [
+            $this->logHandledException($exception, 'Weight Correction Sync Queue Failed After Update', $request, [
                 'weight_id' => $weight->id,
                 'lrNumber' => $weight->lrNumber,
                 'lspId' => $weight->lspId,
             ], 'warning');
-            $message = 'Weight updated, but sync failed: ' . $exception->getMessage();
+            $message = 'Weight updated, but Travis sync could not be queued: ' . $exception->getMessage();
             $messageType = 'warning';
         }
 
@@ -199,5 +214,28 @@ class WeightCorrectionController extends BaseController
         }
 
         return response()->json($tracking);
+    }
+
+    private function queueWeightSync(Weight $weight, bool $recorrection, Request $request, string $reason): void
+    {
+        SyncWeightCorrectionJob::dispatch(
+            (int) $weight->id,
+            $recorrection,
+            optional($request->user())->id,
+            $reason
+        );
+    }
+
+    private function findTracking(?string $lspId, ?string $lrNumber): ?Tracking
+    {
+        if (!$lspId || !$lrNumber) {
+            return null;
+        }
+
+        return Tracking::query()
+            ->where('lspId', $lspId)
+            ->where('lrNumber', $lrNumber)
+            ->latest('id')
+            ->first();
     }
 }

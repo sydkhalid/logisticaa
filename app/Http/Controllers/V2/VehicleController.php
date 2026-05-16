@@ -36,21 +36,26 @@ class VehicleController extends BaseController
             ['vehicleNo'],
             ['id', 'vehicleNo', 'created_at', null],
             function (Vehicle $vehicle, int $index) {
+                $actions = [
+                    $this->actionLink(route('v2.vehicles.show', $vehicle), 'View', 'btn-outline-info'),
+                    $this->actionLink(route('v2.vehicles.edit', $vehicle), 'Edit', 'btn-outline-primary'),
+                ];
+
+                if ($this->canManageDestructiveActions(request())) {
+                    $actions[] = $this->actionForm(
+                        route('v2.vehicles.destroy', $vehicle),
+                        'Delete',
+                        'btn-outline-danger',
+                        'DELETE',
+                        'Remove this vehicle?'
+                    );
+                }
+
                 return [
                     'index' => $index,
                     'vehicleNo' => e($vehicle->vehicleNo),
                     'created_at' => e($this->displayDate($vehicle->created_at)),
-                    'actions' => $this->actionGroup([
-                        $this->actionLink(route('v2.vehicles.show', $vehicle), 'View', 'btn-outline-info'),
-                        $this->actionLink(route('v2.vehicles.edit', $vehicle), 'Edit', 'btn-outline-primary'),
-                        $this->actionForm(
-                            route('v2.vehicles.destroy', $vehicle),
-                            'Delete',
-                            'btn-outline-danger',
-                            'DELETE',
-                            'Remove this vehicle?'
-                        ),
-                    ]),
+                    'actions' => $this->actionGroup($actions),
                 ];
             }
         );
@@ -222,5 +227,12 @@ class VehicleController extends BaseController
             ->where('vehicleNo', $vehicleNo)
             ->where('status', 0)
             ->exists();
+    }
+
+    private function canManageDestructiveActions(Request $request): bool
+    {
+        $user = $request->user();
+
+        return $user && method_exists($user, 'isAdmin') && $user->isAdmin();
     }
 }
