@@ -54,7 +54,7 @@ class TrackController extends Controller
     private function travisSystemEmail(): string
     {
         $systemUser = User::query()->first();
-        $email = trim((string) env('TRAVIS_SYSTEM_EMAIL', ''));
+        $email = trim((string) config('integrations.travis.system_email', ''));
 
         if ($email !== '') {
             return $email;
@@ -69,7 +69,7 @@ class TrackController extends Controller
 
     private function travisSystemPassword(): string
     {
-        $password = trim((string) env('TRAVIS_SYSTEM_PASSWORD', ''));
+        $password = trim((string) config('integrations.travis.system_password', ''));
 
         if ($password === '') {
             throw new \RuntimeException('Travis system password is not configured.');

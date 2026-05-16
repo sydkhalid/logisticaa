@@ -101,7 +101,7 @@ class ExternalLogisticsService
         $systemUser = User::query()->first();
         $email = $this->systemBocshEmail($systemUser);
 
-        $response = $this->loginToBocsh($email, $this->requiredEnv('TRAVIS_SYSTEM_PASSWORD', 'Travis system password'));
+        $response = $this->loginToBocsh($email, $this->requiredConfig('integrations.travis.system_password', 'Travis system password'));
         $token = $response['token'] ?? null;
 
         if ($token && $systemUser) {
@@ -130,11 +130,11 @@ class ExternalLogisticsService
 
         $response = $this->fleetRequest('POST', 'login', [
             'headers' => [
-                'Authorization' => $this->requiredEnv('FLEETX_BASIC_AUTH', 'FleetX basic authorization header'),
+                'Authorization' => $this->requiredConfig('integrations.fleetx.basic_auth', 'FleetX basic authorization header'),
             ],
             'form_params' => [
-                'username' => $this->requiredEnv('FLEETX_API_USERNAME', 'FleetX API username'),
-                'password' => $this->requiredEnv('FLEETX_API_PASSWORD', 'FleetX API password'),
+                'username' => $this->requiredConfig('integrations.fleetx.username', 'FleetX API username'),
+                'password' => $this->requiredConfig('integrations.fleetx.password', 'FleetX API password'),
                 'grant_type' => 'password',
             ],
         ], false);
@@ -496,7 +496,7 @@ class ExternalLogisticsService
             return $this->attachMonitor($health, 'travis');
         }
 
-        if (!$this->envIsConfigured('TRAVIS_SYSTEM_PASSWORD')) {
+        if (!$this->configIsConfigured('integrations.travis.system_password')) {
             $health['status'] = $storedToken ? 'warning' : 'offline';
             $health['message'] = $storedToken
                 ? 'Travis stored token is available, but fresh login is disabled because the system password is not configured.'
@@ -509,7 +509,7 @@ class ExternalLogisticsService
         }
 
         try {
-            $response = $this->loginToBocsh($email, $this->requiredEnv('TRAVIS_SYSTEM_PASSWORD', 'Travis system password'));
+            $response = $this->loginToBocsh($email, $this->requiredConfig('integrations.travis.system_password', 'Travis system password'));
             if (!$this->loginSucceeded($response)) {
                 throw new RuntimeException($response['message'] ?? 'Travis authentication failed.');
             }
@@ -1297,11 +1297,11 @@ class ExternalLogisticsService
 
     private function verifyTls()
     {
-        if (!filter_var(env('TRAVIS_VERIFY_TLS', true), FILTER_VALIDATE_BOOLEAN)) {
+        if (!filter_var(config('integrations.travis.verify_tls', true), FILTER_VALIDATE_BOOLEAN)) {
             return false;
         }
 
-        $caBundle = trim((string) env('TRAVIS_CA_BUNDLE', ''));
+        $caBundle = trim((string) config('integrations.travis.ca_bundle', ''));
 
         if ($caBundle === '') {
             return true;
@@ -1314,9 +1314,9 @@ class ExternalLogisticsService
         return $caBundle;
     }
 
-    private function requiredEnv(string $key, string $label): string
+    private function requiredConfig(string $key, string $label): string
     {
-        $value = trim((string) env($key, ''));
+        $value = trim((string) config($key, ''));
 
         if ($value === '') {
             throw new RuntimeException($label . ' is not configured.');
@@ -1325,14 +1325,14 @@ class ExternalLogisticsService
         return $value;
     }
 
-    private function envIsConfigured(string $key): bool
+    private function configIsConfigured(string $key): bool
     {
-        return trim((string) env($key, '')) !== '';
+        return trim((string) config($key, '')) !== '';
     }
 
     private function systemBocshEmail(?User $systemUser = null): string
     {
-        $email = trim((string) env('TRAVIS_SYSTEM_EMAIL', ''));
+        $email = trim((string) config('integrations.travis.system_email', ''));
 
         if ($email !== '') {
             return $email;

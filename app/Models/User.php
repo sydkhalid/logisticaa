@@ -71,7 +71,7 @@ class User extends Authenticatable
             return true;
         }
 
-        $configuredEmails = env('LOG_ADMIN_EMAILS', env('ADMIN_EMAILS', env('TRAVIS_SYSTEM_EMAIL', 'connect@logisticaa.co.in')));
+        $configuredEmails = config('integrations.logs.admin_emails', 'connect@logisticaa.co.in');
         $adminEmails = array_filter(array_map(function ($email) {
             return strtolower(trim((string) $email));
         }, explode(',', (string) $configuredEmails)));

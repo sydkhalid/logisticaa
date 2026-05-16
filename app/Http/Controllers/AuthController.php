@@ -159,11 +159,11 @@ class AuthController extends Controller
 
     private function verifyTls()
     {
-        if (!filter_var(env('TRAVIS_VERIFY_TLS', true), FILTER_VALIDATE_BOOLEAN)) {
+        if (!filter_var(config('integrations.travis.verify_tls', true), FILTER_VALIDATE_BOOLEAN)) {
             return false;
         }
 
-        $caBundle = trim((string) env('TRAVIS_CA_BUNDLE', ''));
+        $caBundle = trim((string) config('integrations.travis.ca_bundle', ''));
 
         if ($caBundle === '') {
             return true;
