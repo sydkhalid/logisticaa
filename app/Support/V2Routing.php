@@ -39,8 +39,12 @@ class V2Routing
     {
         $path = ltrim($path, '/');
         $prefix = self::routePrefix();
+        $relativePath = $prefix === '' ? $path : $prefix . '/' . $path;
+        $filePath = $prefix === ''
+            ? base_path('v2/' . $path)
+            : public_path($relativePath);
 
-        return asset($prefix === '' ? $path : $prefix . '/' . $path);
+        return self::withVersion(asset($relativePath), $filePath);
     }
 
     public static function publicAsset(string $path): string
@@ -49,13 +53,24 @@ class V2Routing
         $assetUrl = config('app.asset_url');
 
         if ($assetUrl) {
-            return rtrim($assetUrl, '/') . '/' . $path;
+            return self::withVersion(rtrim($assetUrl, '/') . '/' . $path, public_path($path));
         }
 
         if (app()->runningInConsole()) {
-            return asset($path);
+            return self::withVersion(asset($path), public_path($path));
         }
 
-        return request()->getSchemeAndHttpHost() . '/' . $path;
+        return self::withVersion(request()->getSchemeAndHttpHost() . '/' . $path, public_path($path));
+    }
+
+    private static function withVersion(string $url, string $filePath): string
+    {
+        if (!is_file($filePath)) {
+            return $url;
+        }
+
+        $separator = str_contains($url, '?') ? '&' : '?';
+
+        return $url . $separator . 'v=' . filemtime($filePath);
     }
 }
