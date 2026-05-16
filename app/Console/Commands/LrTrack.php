@@ -2,11 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\PushActiveTrackingsToTravisJob;
+use App\Jobs\SyncFleetLiveJob;
+use App\Jobs\SyncWheelsEyeJob;
 use Illuminate\Console\Command;
 use App\Services\ActivityLogService;
-use App\Models\Tracking;
-use App\Models\Vehicle;
-use App\Http\Controllers\TrackController;
 use Illuminate\Support\Facades\Log;
 
 class LrTrack extends Command
@@ -49,32 +49,13 @@ class LrTrack extends Command
         $activityLogs->logSystem('info', 'Lr Track Start', 'Scheduled LR tracking sync started.');
 
         try {
-            $auth = new TrackController();
-            $access_token = $auth->getauthenticate();
-            if($access_token['success'] == 'true'){
-                   $wheelseye = Tracking::where('status' ,'0')->where('vehicle_status' ,'0')->get();
-                     if($wheelseye){
-                        foreach($wheelseye as $key=>$lrlist){
-                           $list = $auth->wheelseyeapi($lrlist['vehicleNo']);
-                         
-                       }               
-                   }
-                $flee = Tracking::where('status','0')->where('vehicle_status','1')->get();
-                  foreach($flee as $key=>$lrlistflee){
-                      if($flee){
-                          $list = $auth->fleeapi($lrlistflee['vehicleNo']);
-                       
-                      }               
-                  }
-            }
-            $sendtobocsh = Tracking::where('status' ,'0')->get();
-            $save = $auth->sendbocsh($sendtobocsh);
+            SyncWheelsEyeJob::dispatch(null, 'scheduled-lr-track');
+            SyncFleetLiveJob::dispatch(null, 'scheduled-lr-track');
+            PushActiveTrackingsToTravisJob::dispatch(null, 'scheduled-lr-track')->delay(now()->addMinute());
 
-            Log::info('Lr Track was finished');
+            Log::info('Lr Track jobs were queued');
             Log::info('------------------------------------------------------');
-            $activityLogs->logSystem('success', 'Lr Track Complete', 'Scheduled LR tracking sync finished successfully.', [
-                'active_tracking_count' => Tracking::where('status', '0')->count(),
-            ]);
+            $activityLogs->logSystem('success', 'Lr Track Queued', 'Scheduled LR tracking queue chain was dispatched.');
         } catch (\Throwable $exception) {
             $activityLogs->logSystem('danger', 'Lr Track Failed', $exception->getMessage(), [
                 'exception' => get_class($exception),

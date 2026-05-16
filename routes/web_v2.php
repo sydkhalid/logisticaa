@@ -39,6 +39,8 @@ $router->prefix('v2')->name('v2.')->group(function () use ($router) {
         $router->prefix('logs')->name('logs.')->group(function () use ($router) {
             $router->get('/', [SystemLogController::class, 'index'])->name('index');
             $router->get('/data', [SystemLogController::class, 'data'])->name('data');
+            $router->get('/export', [SystemLogController::class, 'export'])->name('export');
+            $router->post('/clear-old', [SystemLogController::class, 'clearOld'])->name('clear-old');
             $router->post('/clear', [SystemLogController::class, 'clear'])->name('clear');
             $router->get('/{log}', [SystemLogController::class, 'show'])->name('show');
         });

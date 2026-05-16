@@ -156,6 +156,22 @@
                 <span>Stored Token</span>
                 <strong>{{ $item['stored_token'] }}</strong>
               </div>
+              <div class="integration-value--wide">
+                <span>Last Success</span>
+                <strong>{{ $item['last_success_at'] ?? '-' }}</strong>
+              </div>
+              <div class="integration-value--wide">
+                <span>Last Error Time</span>
+                <strong>{{ $item['last_error_at'] ?? '-' }}</strong>
+              </div>
+              <div class="integration-value--wide">
+                <span>Token Refresh Time</span>
+                <strong>{{ $item['token_refreshed_at'] ?? '-' }}</strong>
+              </div>
+              <div>
+                <span>Provider Response</span>
+                <strong>{{ isset($item['response_time_ms']) && $item['response_time_ms'] !== null ? $item['response_time_ms'] . ' ms' : '-' }}</strong>
+              </div>
 
               @if ($key === 'fleetx')
                 <div>
@@ -179,7 +195,7 @@
                   <strong>{{ $item['running_vehicle_count'] }}</strong>
                 </div>
                 <div>
-                  <span>Token Refreshed</span>
+                  <span>Refreshed This Check</span>
                   <strong>{{ $item['token_refreshed'] ? 'Yes' : 'No' }}</strong>
                 </div>
               @elseif ($key === 'wheelseye')
@@ -224,6 +240,12 @@
                 @foreach ($item['issues'] as $issue)
                   <div>{{ $issue }}</div>
                 @endforeach
+              </div>
+            @endif
+
+            @if (!empty($item['last_error']) && $item['last_error'] !== '-')
+              <div class="integration-note mt-3">
+                <strong>Last error:</strong> {{ $item['last_error'] }}
               </div>
             @endif
 

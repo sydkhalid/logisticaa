@@ -17,6 +17,7 @@ class SystemLogController extends BaseController
     {
         $filters = $this->validatedFilters($request);
         $query = $this->filteredQuery($filters);
+        $retentionCutoff = $this->retentionCutoff();
 
         return $this->render('logs.index', [
             'pageTitle' => 'System Logs',
@@ -28,6 +29,9 @@ class SystemLogController extends BaseController
                 'danger' => (clone $query)->whereIn('type', ['danger', 'emergency'])->count(),
             ],
             'allLogsCount' => ActivityLog::query()->count(),
+            'oldLogsCount' => ActivityLog::query()->where('created_at', '<', $retentionCutoff)->count(),
+            'retentionCutoff' => $this->displayDate($retentionCutoff),
+            'canManageLogs' => $this->canManageLogs($request),
             'types' => ['info', 'success', 'warning', 'danger', 'emergency'],
         ]);
     }
@@ -84,12 +88,83 @@ class SystemLogController extends BaseController
         ]);
     }
 
-    public function clear()
+    public function export(Request $request)
     {
-        ActivityLog::query()->delete();
+        $filters = $this->validatedFilters($request);
+        $filename = 'system-logs-' . $filters['from'] . '_to_' . $filters['to'] . '.csv';
+        $rows = $this->filteredQuery($filters)
+            ->select(['id', 'type', 'title', 'description', 'uri', 'ip', 'is_api', 'request_info', 'created_at', 'created_by', 'user_id'])
+            ->latest('id');
+
+        return response()->streamDownload(function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, array_map([$this, 'csvCell'], [
+                'ID',
+                'Date',
+                'Type',
+                'Title',
+                'Description',
+                'Actor',
+                'User ID',
+                'URI',
+                'IP',
+                'API Request',
+                'Request Info',
+            ]));
+
+            foreach ($rows->cursor() as $log) {
+                fputcsv($handle, array_map([$this, 'csvCell'], [
+                    $log->id,
+                    $log->created_at,
+                    $log->type,
+                    $log->title,
+                    $log->description,
+                    $log->created_by ?: 'System',
+                    $log->user_id,
+                    $log->uri,
+                    $log->ip,
+                    (int) $log->is_api === 1 ? 'Yes' : 'No',
+                    $log->request_info,
+                ]));
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv',
+        ]);
+    }
+
+    public function clearOld(Request $request)
+    {
+        $this->authorizeLogClear($request);
+
+        $cutoff = $this->retentionCutoff();
+        $deleted = ActivityLog::query()
+            ->where('created_at', '<', $cutoff)
+            ->delete();
+
+        $this->activityLogs->logSystem('warning', 'Old System Logs Cleared', 'Admin cleared system logs older than 30 days.', [
+            'deleted_count' => $deleted,
+            'cutoff' => $cutoff,
+        ], $request->user()->id, $request->user()->name ?: $request->user()->email);
 
         return redirect()->route('v2.logs.index')
-            ->with('message', 'System logs cleared successfully.')
+            ->with('message', $deleted . ' system log(s) older than 30 days cleared.')
+            ->with('message_type', 'success');
+    }
+
+    public function clear(Request $request)
+    {
+        $this->authorizeLogClear($request);
+
+        $deleted = ActivityLog::query()->delete();
+
+        $this->activityLogs->logSystem('warning', 'System Logs Cleared', 'Admin cleared all system logs.', [
+            'deleted_count' => $deleted,
+        ], $request->user()->id, $request->user()->name ?: $request->user()->email);
+
+        return redirect()->route('v2.logs.index')
+            ->with('message', $deleted . ' system log(s) cleared successfully.')
             ->with('message_type', 'success');
     }
 
@@ -123,5 +198,35 @@ class SystemLogController extends BaseController
             ->when($filters['actor'] !== '', function ($builder) use ($filters) {
                 $builder->where('created_by', 'like', '%' . $filters['actor'] . '%');
             });
+    }
+
+    private function authorizeLogClear(Request $request): void
+    {
+        abort_unless($this->canManageLogs($request), 403, 'Only administrators can clear system logs.');
+    }
+
+    private function canManageLogs(Request $request): bool
+    {
+        $user = $request->user();
+
+        return $user && method_exists($user, 'isAdmin') && $user->isAdmin();
+    }
+
+    private function retentionCutoff(): string
+    {
+        return date('Y-m-d H:i:s', strtotime('-30 days'));
+    }
+
+    private function csvCell($value): string
+    {
+        if ($value instanceof \DateTimeInterface) {
+            $value = $value->format('Y-m-d H:i:s');
+        }
+
+        $value = (string) $value;
+
+        return preg_match('/^[=+\-@]/', $value) === 1
+            ? "'" . $value
+            : $value;
     }
 }

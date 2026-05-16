@@ -43,7 +43,11 @@ class TrackController extends Controller
                         'json' => $send_data,
                 ]);
         $data = json_decode((string)$response->getBody(),true);
-        $user = User::where('id', 1)->Update(['bearer_token' => $data['token']]);
+        $user = User::where('id', 1)->first();
+        if ($user) {
+            $user->bearer_token = $data['token'];
+            $user->save();
+        }
         return $data;
     }
 

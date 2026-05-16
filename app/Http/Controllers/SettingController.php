@@ -38,16 +38,15 @@ class SettingController extends Controller
      */
     public function store(Request $request)
     {
-        $data = array(
-            'name' => $request->name,
-            'copyright' => $request->copyright,
-            'bocsh_link' => $request->bocsh_link,
-            'tracing_link' => $request->tracing_link,
-            'address' => $request->address,
-            'access_token' => $request->access_token,
-            'updated_at' => date("Y-m-d H:i:s"),
-        );
-        Setting::where('id', '=', $request->id)->update($data);
+        $setting = Setting::query()->findOrFail($request->id);
+        $setting->name = $request->name;
+        $setting->copyright = $request->copyright;
+        $setting->bocsh_link = $request->bocsh_link;
+        $setting->tracing_link = $request->tracing_link;
+        $setting->address = $request->address;
+        $setting->access_token = $request->access_token;
+        $setting->save();
+
         return redirect("settings")->with('message', 'Setting updated successfully!')->with('message_type', 'success');
     }
 

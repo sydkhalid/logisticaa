@@ -55,10 +55,21 @@
               <h4 class="card-title mb-1">System Activity Log</h4>
               <p class="card-description mb-0">All saved user and system activity with date-wise filtering.</p>
             </div>
-            <form method="POST" action="{{ route('v2.logs.clear') }}" onsubmit="return confirm('Clear all system logs? This cannot be undone.');">
-              @csrf
-              <button type="submit" class="btn btn-danger" {{ $allLogsCount < 1 ? 'disabled' : '' }}>Clear All Logs</button>
-            </form>
+            <div class="v2-action-cluster justify-content-end">
+              <a href="{{ route('v2.logs.export', $filters) }}" class="btn btn-outline-primary">Export Logs</a>
+
+              @if ($canManageLogs)
+                <form method="POST" action="{{ route('v2.logs.clear-old') }}" onsubmit="return confirm('Clear logs older than 30 days? This cannot be undone.');">
+                  @csrf
+                  <button type="submit" class="btn btn-outline-danger" {{ $oldLogsCount < 1 ? 'disabled' : '' }}>Clear Older Than 30 Days</button>
+                </form>
+
+                <form method="POST" action="{{ route('v2.logs.clear') }}" onsubmit="return confirm('Clear all system logs? This cannot be undone.');">
+                  @csrf
+                  <button type="submit" class="btn btn-danger" {{ $allLogsCount < 1 ? 'disabled' : '' }}>Clear All Logs</button>
+                </form>
+              @endif
+            </div>
           </div>
 
           <form method="GET" action="{{ route('v2.logs.index') }}" class="row mb-4 g-3">

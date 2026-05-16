@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\V2;
 
+use App\Jobs\RefreshLrTrackingJob;
 use App\Models\Tracking;
 use App\Models\Vehicle;
 use App\Services\V2\ExternalLogisticsService;
@@ -147,16 +148,16 @@ class LrTrackingController extends BaseController
         }
 
         try {
-            $this->integrations->syncTracking($tracking, $request->user());
-            $message = 'LR tracking created and synced successfully.';
+            $this->queueTrackingRefresh($tracking, $request, 'create');
+            $message = 'LR tracking created. Background sync has been queued.';
             $messageType = 'success';
         } catch (\Throwable $exception) {
-            $this->logHandledException($exception, 'LR Tracking Sync Failed After Create', $request, [
+            $this->logHandledException($exception, 'LR Tracking Sync Queue Failed After Create', $request, [
                 'tracking_id' => $tracking->id,
                 'lrNumber' => $tracking->lrNumber,
                 'vehicleNo' => $tracking->vehicleNo,
             ], 'warning');
-            $message = 'LR tracking created, but sync failed: ' . $exception->getMessage();
+            $message = 'LR tracking created, but background sync could not be queued: ' . $exception->getMessage();
             $messageType = 'warning';
         }
 
@@ -216,16 +217,16 @@ class LrTrackingController extends BaseController
         }
 
         try {
-            $this->integrations->syncTracking($tracking, $request->user());
-            $message = 'LR status updated successfully.';
+            $this->queueTrackingRefresh($tracking, $request, 'update');
+            $message = 'LR status updated. Background sync has been queued.';
             $messageType = 'success';
         } catch (\Throwable $exception) {
-            $this->logHandledException($exception, 'LR Tracking Sync Failed After Update', $request, [
+            $this->logHandledException($exception, 'LR Tracking Sync Queue Failed After Update', $request, [
                 'tracking_id' => $tracking->id,
                 'lrNumber' => $tracking->lrNumber,
                 'vehicleNo' => $tracking->vehicleNo,
             ], 'warning');
-            $message = 'LR status updated, but sync failed: ' . $exception->getMessage();
+            $message = 'LR status updated, but background sync could not be queued: ' . $exception->getMessage();
             $messageType = 'warning';
         }
 
@@ -237,13 +238,13 @@ class LrTrackingController extends BaseController
     public function refresh(Request $request, Tracking $tracking)
     {
         try {
-            $this->integrations->syncTracking($tracking, $request->user());
+            $this->queueTrackingRefresh($tracking, $request, 'manual-refresh');
 
             return back()
-                ->with('message', 'Tracking location refreshed successfully.')
+                ->with('message', 'Tracking refresh has been queued.')
                 ->with('message_type', 'success');
         } catch (\Throwable $exception) {
-            $this->logHandledException($exception, 'LR Tracking Refresh Failed', $request, [
+            $this->logHandledException($exception, 'LR Tracking Refresh Queue Failed', $request, [
                 'tracking_id' => $tracking->id,
                 'lrNumber' => $tracking->lrNumber,
             ]);
@@ -251,6 +252,13 @@ class LrTrackingController extends BaseController
                 ->with('message', $exception->getMessage())
                 ->with('message_type', 'danger');
         }
+    }
+
+    private function queueTrackingRefresh(Tracking $tracking, Request $request, string $reason): void
+    {
+        $user = $request->user();
+
+        RefreshLrTrackingJob::dispatch($tracking->id, $user ? $user->id : null, $reason);
     }
 
     public function checkVehicleAvailability(Request $request)

@@ -116,7 +116,7 @@ class ActivityLogService
             return false;
         }
 
-        if ($request->routeIs('v2.logs.clear')) {
+        if ($request->routeIs('v2.logs.clear', 'v2.logs.clear-old')) {
             return false;
         }
 

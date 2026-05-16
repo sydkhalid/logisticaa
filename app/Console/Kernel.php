@@ -25,7 +25,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-       $schedule->command('Lr:Track')->everyMinute();
+       $schedule->command('Lr:Track')->everyMinute()->withoutOverlapping();
     }
 
     /**

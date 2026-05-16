@@ -25,4 +25,14 @@ class ExampleTest extends TestCase
     {
         $this->post(route('v2.logs.clear'))->assertRedirect(route('v2.login'));
     }
+
+    public function test_system_logs_retention_clear_requires_authentication()
+    {
+        $this->post(route('v2.logs.clear-old'))->assertRedirect(route('v2.login'));
+    }
+
+    public function test_system_logs_export_requires_authentication()
+    {
+        $this->get(route('v2.logs.export'))->assertRedirect(route('v2.login'));
+    }
 }

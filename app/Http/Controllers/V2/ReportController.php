@@ -62,7 +62,7 @@ class ReportController extends BaseController
                     ->where('vehicleStatus', 1)
                     ->where('statusStop', 1)
                     ->count(),
-                'fleetAnalytics' => $this->integrations->getFleetAnalytics($request->user()),
+                'fleetAnalytics' => $this->integrations->cachedFleetAnalytics(),
             ],
             'trackingStatusBreakdown' => $trackingStatusBreakdown,
             'recentTrackings' => (clone $trackingsQuery)->latest('id')->limit(10)->get(),

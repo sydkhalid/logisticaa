@@ -24,7 +24,7 @@ class DashboardController extends BaseController
         $todayStart = $now->copy()->startOfDay();
         $weekStart = $now->copy()->subDays(6)->startOfDay();
         $weightsEnabled = Schema::hasTable('weights');
-        $analytics = $this->integrations->getFleetAnalytics(auth()->user());
+        $analytics = $this->integrations->cachedFleetAnalytics();
 
         $trackingStatusCounts = Tracking::query()
             ->selectRaw('status, COUNT(*) AS aggregate')

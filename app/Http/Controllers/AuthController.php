@@ -102,7 +102,11 @@ class AuthController extends Controller
                 // dd($data['message']);
                 if($data['message'] == 'Token is valid for 1 hour'){
                     \Auth::attempt(['email' => $request->email, 'password' => $request->password]);
-                    $user = User::where('email', $request->email)->Update(['bearer_token' => $data['token']]);
+                    $user = User::where('email', $request->email)->first();
+                    if ($user) {
+                        $user->bearer_token = $data['token'];
+                        $user->save();
+                    }
 
                     return redirect('/home')
                         ->with('message', 'Welcome back ' . auth()->user()->username)

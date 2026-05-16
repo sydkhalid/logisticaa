@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\StoredTokenService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -31,6 +32,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'access_token',
+        'bearer_token',
     ];
 
     /**
@@ -41,4 +44,38 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function getAccessTokenAttribute($value)
+    {
+        return StoredTokenService::decrypt($value);
+    }
+
+    public function setAccessTokenAttribute($value): void
+    {
+        $this->attributes['access_token'] = StoredTokenService::encrypt($value);
+    }
+
+    public function getBearerTokenAttribute($value)
+    {
+        return StoredTokenService::decrypt($value);
+    }
+
+    public function setBearerTokenAttribute($value): void
+    {
+        $this->attributes['bearer_token'] = StoredTokenService::encrypt($value);
+    }
+
+    public function isAdmin(): bool
+    {
+        if ((bool) ($this->is_admin ?? false)) {
+            return true;
+        }
+
+        $configuredEmails = env('LOG_ADMIN_EMAILS', env('ADMIN_EMAILS', env('TRAVIS_SYSTEM_EMAIL', 'connect@logisticaa.co.in')));
+        $adminEmails = array_filter(array_map(function ($email) {
+            return strtolower(trim((string) $email));
+        }, explode(',', (string) $configuredEmails)));
+
+        return in_array(strtolower((string) $this->email), $adminEmails, true);
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Services\V2;
 
 use App\Models\Epod;
+use App\Models\IntegrationMonitor;
 use App\Models\Setting;
 use App\Models\Tracking;
 use App\Models\User;
@@ -10,8 +11,9 @@ use App\Models\Vehicle;
 use App\Models\Weight;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use RuntimeException;
 
 class ExternalLogisticsService
@@ -104,16 +106,16 @@ class ExternalLogisticsService
 
         if ($token && $systemUser) {
             $systemUser->bearer_token = $token;
-            DB::table('users')->where('id', $systemUser->id)->update([
-                'bearer_token' => $token,
-            ]);
+            $systemUser->save();
         }
 
         if ($token && $user) {
             $user->bearer_token = $token;
-            DB::table('users')->where('id', $user->id)->update([
-                'bearer_token' => $token,
-            ]);
+            $user->save();
+        }
+
+        if ($token) {
+            $this->recordTokenRefresh('travis');
         }
 
         return $token;
@@ -142,16 +144,16 @@ class ExternalLogisticsService
 
         if ($token) {
             $settings->access_token = $token;
-            DB::table('settings')->where('id', $settings->id)->update([
-                'access_token' => $token,
-            ]);
+            $settings->save();
         }
 
         if ($token && $targetUser) {
             $targetUser->access_token = $token;
-            DB::table('users')->where('id', $targetUser->id)->update([
-                'access_token' => $token,
-            ]);
+            $targetUser->save();
+        }
+
+        if ($token) {
+            $this->recordTokenRefresh('fleetx');
         }
 
         return $token;
@@ -170,6 +172,22 @@ class ExternalLogisticsService
 
             return $this->fleetAnalyticsDefaults();
         }
+    }
+
+    public function cachedFleetAnalytics(): array
+    {
+        $cached = Cache::get('integrations.fleetx.analytics');
+
+        return array_merge($this->fleetAnalyticsDefaults(), is_array($cached) ? $cached : []);
+    }
+
+    public function refreshFleetAnalyticsCache(?User $user = null): array
+    {
+        $analytics = $this->getFleetAnalytics($user);
+
+        Cache::put('integrations.fleetx.analytics', $analytics, now()->addMinutes(5));
+
+        return $analytics;
     }
 
     public function findFleetVehicle(string $vehicleNo, ?User $user = null): ?array
@@ -277,6 +295,7 @@ class ExternalLogisticsService
 
     public function fleetHealth(?User $user = null): array
     {
+        $startedAt = microtime(true);
         $settings = $this->getSettings();
         $localVehicles = $this->localVehicleNumbers(1);
         $health = [
@@ -299,7 +318,9 @@ class ExternalLogisticsService
         ];
 
         if (!$health['configured']) {
-            return $health;
+            $this->recordIntegrationError('fleetx', $health['message']);
+
+            return $this->attachMonitor($health, 'fleetx');
         }
 
         try {
@@ -366,17 +387,22 @@ class ExternalLogisticsService
                 $health['status'] = 'online';
                 $health['message'] = 'FleetX analytics and token flow are healthy.';
             }
+
+            $this->recordIntegrationSuccess('fleetx', $this->elapsedMs($startedAt));
         } catch (RequestException $exception) {
             $health['message'] = $this->extractErrorMessage($exception, 'FleetX request failed.');
+            $this->recordIntegrationError('fleetx', $health['message'], $this->elapsedMs($startedAt));
         } catch (\Throwable $exception) {
             $health['message'] = $this->maskSensitiveText($exception->getMessage());
+            $this->recordIntegrationError('fleetx', $health['message'], $this->elapsedMs($startedAt));
         }
 
-        return $health;
+        return $this->attachMonitor($health, 'fleetx');
     }
 
     public function wheelsEyeHealth(): array
     {
+        $startedAt = microtime(true);
         $settings = $this->getSettings();
         $localVehicles = $this->localVehicleNumbers(0);
         $health = [
@@ -397,7 +423,9 @@ class ExternalLogisticsService
         ];
 
         if (!$health['configured']) {
-            return $health;
+            $this->recordIntegrationError('wheelseye', $health['message']);
+
+            return $this->attachMonitor($health, 'wheelseye');
         }
 
         try {
@@ -427,17 +455,22 @@ class ExternalLogisticsService
                 $health['status'] = 'online';
                 $health['message'] = 'WheelsEye tracking is healthy for the current own-vehicle set.';
             }
+
+            $this->recordIntegrationSuccess('wheelseye', $this->elapsedMs($startedAt));
         } catch (RequestException $exception) {
             $health['message'] = $this->extractErrorMessage($exception, 'WheelsEye request failed.');
+            $this->recordIntegrationError('wheelseye', $health['message'], $this->elapsedMs($startedAt));
         } catch (\Throwable $exception) {
             $health['message'] = $this->maskSensitiveText($exception->getMessage());
+            $this->recordIntegrationError('wheelseye', $health['message'], $this->elapsedMs($startedAt));
         }
 
-        return $health;
+        return $this->attachMonitor($health, 'wheelseye');
     }
 
     public function travisHealth(?User $user = null): array
     {
+        $startedAt = microtime(true);
         $settings = $this->getSettings();
         $systemUser = User::query()->first();
         $email = $this->systemBocshEmail($systemUser);
@@ -458,7 +491,9 @@ class ExternalLogisticsService
         ];
 
         if (!$health['configured']) {
-            return $health;
+            $this->recordIntegrationError('travis', $health['message']);
+
+            return $this->attachMonitor($health, 'travis');
         }
 
         if (!$this->envIsConfigured('TRAVIS_SYSTEM_PASSWORD')) {
@@ -468,7 +503,9 @@ class ExternalLogisticsService
                 : 'Travis system password is not configured and no stored token is available.';
             $health['issues'][] = 'Set TRAVIS_SYSTEM_PASSWORD in .env to enable token refresh.';
 
-            return $health;
+            $this->recordIntegrationError('travis', $health['message']);
+
+            return $this->attachMonitor($health, 'travis');
         }
 
         try {
@@ -479,17 +516,31 @@ class ExternalLogisticsService
 
             $health['status'] = 'online';
             $health['message'] = 'Travis authentication succeeded and the LR API is reachable.';
-            $health['issued_token'] = $this->maskSecret($response['token'] ?? null);
+            $issuedToken = $response['token'] ?? null;
+            $health['issued_token'] = $this->maskSecret($issuedToken);
+            if ($issuedToken) {
+                $this->recordTokenRefresh('travis');
+            }
+            $this->recordIntegrationSuccess('travis', $this->elapsedMs($startedAt));
         } catch (RequestException $exception) {
             $health['message'] = $this->extractErrorMessage($exception, 'Travis request failed.');
+            $this->recordIntegrationError('travis', $health['message'], $this->elapsedMs($startedAt));
         } catch (\Throwable $exception) {
             $health['message'] = $this->maskSensitiveText($exception->getMessage());
+            $this->recordIntegrationError('travis', $health['message'], $this->elapsedMs($startedAt));
         }
 
-        return $health;
+        return $this->attachMonitor($health, 'travis');
     }
 
     public function syncTracking(Tracking $tracking, ?User $user = null): array
+    {
+        $this->refreshTrackingLocation($tracking, $user);
+
+        return $this->pushTrackingToTravis($tracking, $user);
+    }
+
+    public function refreshTrackingLocation(Tracking $tracking, ?User $user = null): ?array
     {
         $vehicle = Vehicle::query()->where('vehicleNo', $tracking->vehicleNo)->first();
 
@@ -500,12 +551,70 @@ class ExternalLogisticsService
                 $tracking->longitude = $position['longitude'];
                 $tracking->location = $position['location'];
                 $tracking->save();
+
+                return $position;
             }
         }
 
+        return null;
+    }
+
+    public function pushTrackingToTravis(Tracking $tracking, ?User $user = null): array
+    {
         $response = $this->bocshRequest('POST', '/api/lr/tracking', $this->trackingPayload($tracking), $user);
 
         return $this->ensureBocshSuccess($response, 'Tracking sync failed.', 'insertFlag');
+    }
+
+    public function syncFleetLiveLocations(?User $user = null): int
+    {
+        $analytics = $this->refreshFleetAnalyticsCache($user);
+        $vehicles = $this->indexFleetVehicles($analytics['vehicles'] ?? []);
+        $updated = 0;
+
+        foreach ($this->activeTrackingsForVehicleStatus(1)->get() as $tracking) {
+            $normalized = $this->normalizeVehicleNumber($tracking->vehicleNo);
+            if (!$normalized || !isset($vehicles[$normalized])) {
+                continue;
+            }
+
+            $raw = $vehicles[$normalized];
+            $tracking->latitude = $raw['latitude'] ?? null;
+            $tracking->longitude = $raw['longitude'] ?? null;
+            $tracking->location = $raw['address'] ?? null;
+            $tracking->save();
+            $updated++;
+        }
+
+        return $updated;
+    }
+
+    public function syncWheelsEyeLocations(): int
+    {
+        $settings = $this->getSettings();
+        if (!$settings || !$settings->tracing_link || !$settings->address) {
+            throw new RuntimeException('WheelsEye tracking configuration is incomplete.');
+        }
+
+        $payload = $this->wheelsEyeSnapshot($settings);
+        $vehicles = $this->indexWheelsEyeVehicles($payload['data']['list'] ?? []);
+        $updated = 0;
+
+        foreach ($this->activeTrackingsForVehicleStatus(0)->get() as $tracking) {
+            $normalized = $this->normalizeVehicleNumber($tracking->vehicleNo);
+            if (!$normalized || !isset($vehicles[$normalized])) {
+                continue;
+            }
+
+            $raw = $vehicles[$normalized];
+            $tracking->latitude = $raw['latitude'] ?? null;
+            $tracking->longitude = $raw['longitude'] ?? null;
+            $tracking->location = $raw['location'] ?? null;
+            $tracking->save();
+            $updated++;
+        }
+
+        return $updated;
     }
 
     public function syncWeightCorrection(Weight $weight, bool $recorrection = false, ?User $user = null): array
@@ -709,6 +818,101 @@ class ExternalLogisticsService
         return $this->maskSensitiveText($exception->getMessage() ?: $fallback);
     }
 
+    private function attachMonitor(array $health, string $provider): array
+    {
+        return array_merge($health, $this->monitorSnapshot($provider));
+    }
+
+    private function monitorSnapshot(string $provider): array
+    {
+        $defaults = [
+            'last_success_at' => '-',
+            'last_error_at' => '-',
+            'last_error' => '-',
+            'token_refreshed_at' => '-',
+            'response_time_ms' => null,
+        ];
+
+        try {
+            $monitor = IntegrationMonitor::query()->firstOrCreate(['provider' => $provider]);
+
+            return [
+                'last_success_at' => $this->formatMonitorDate($monitor->last_success_at),
+                'last_error_at' => $this->formatMonitorDate($monitor->last_error_at),
+                'last_error' => $monitor->last_error ?: '-',
+                'token_refreshed_at' => $this->formatMonitorDate($monitor->token_refreshed_at),
+                'response_time_ms' => $monitor->response_time_ms,
+            ];
+        } catch (\Throwable $exception) {
+            return $defaults;
+        }
+    }
+
+    private function recordIntegrationSuccess(string $provider, ?int $responseMs = null): void
+    {
+        try {
+            $values = [
+                'last_success_at' => now(),
+            ];
+
+            if ($responseMs !== null) {
+                $values['response_time_ms'] = $responseMs;
+            }
+
+            IntegrationMonitor::query()->updateOrCreate(['provider' => $provider], $values);
+        } catch (\Throwable $exception) {
+            // Monitoring must never block the integration health check itself.
+        }
+    }
+
+    private function recordIntegrationError(string $provider, string $message, ?int $responseMs = null): void
+    {
+        try {
+            $values = [
+                'last_error_at' => now(),
+                'last_error' => substr($this->maskSensitiveText($message), 0, 2000),
+                'response_time_ms' => $responseMs,
+            ];
+
+            IntegrationMonitor::query()->updateOrCreate(['provider' => $provider], $values);
+        } catch (\Throwable $exception) {
+            // Monitoring must never block the integration health check itself.
+        }
+    }
+
+    private function recordTokenRefresh(string $provider): void
+    {
+        try {
+            IntegrationMonitor::query()->updateOrCreate([
+                'provider' => $provider,
+            ], [
+                'token_refreshed_at' => now(),
+            ]);
+        } catch (\Throwable $exception) {
+            // Monitoring must never block token refresh.
+        }
+    }
+
+    private function elapsedMs(float $startedAt): int
+    {
+        return max(0, (int) round((microtime(true) - $startedAt) * 1000));
+    }
+
+    private function formatMonitorDate($value): string
+    {
+        if (!$value) {
+            return '-';
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('d M Y, h:i A');
+        }
+
+        $timestamp = strtotime((string) $value);
+
+        return $timestamp ? date('d M Y, h:i A', $timestamp) : '-';
+    }
+
     private function normalizeBaseUri(string $uri): string
     {
         return rtrim($uri, '/') . '/';
@@ -757,6 +961,49 @@ class ExternalLogisticsService
         ]);
 
         return json_decode((string) $response->getBody(), true) ?: [];
+    }
+
+    private function activeTrackingsForVehicleStatus(int $vehicleStatus)
+    {
+        $query = Tracking::query()->where('status', 0);
+
+        if (Schema::hasColumn('trackings', 'vehicle_status')) {
+            return $query->where('vehicle_status', $vehicleStatus);
+        }
+
+        $vehicleNumbers = Vehicle::query()
+            ->where('vehicleStatus', $vehicleStatus)
+            ->pluck('vehicleNo');
+
+        return $query->whereIn('vehicleNo', $vehicleNumbers);
+    }
+
+    private function indexFleetVehicles(array $vehicles): array
+    {
+        $indexed = [];
+
+        foreach ($vehicles as $vehicle) {
+            $normalized = $this->normalizeVehicleNumber($vehicle['vehicleNumber'] ?? null);
+            if ($normalized) {
+                $indexed[$normalized] = $vehicle;
+            }
+        }
+
+        return $indexed;
+    }
+
+    private function indexWheelsEyeVehicles(array $vehicles): array
+    {
+        $indexed = [];
+
+        foreach ($vehicles as $vehicle) {
+            $normalized = $this->normalizeVehicleNumber($vehicle['vehicleNumber'] ?? null);
+            if ($normalized) {
+                $indexed[$normalized] = $vehicle;
+            }
+        }
+
+        return $indexed;
     }
 
     private function localVehicleNumbers(int $vehicleStatus): array
@@ -909,9 +1156,7 @@ class ExternalLogisticsService
 
         try {
             $settings->access_token = $token;
-            DB::table('settings')->where('id', $settings->id)->update([
-                'access_token' => $token,
-            ]);
+            $settings->save();
         } catch (\Throwable $exception) {
             Log::warning('Unable to persist FleetX token to settings', [
                 'message' => $this->maskSensitiveText($exception->getMessage()),

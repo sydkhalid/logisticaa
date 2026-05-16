@@ -1,0 +1,68 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\Tracking;
+use App\Models\User;
+use App\Services\ActivityLogService;
+use App\Services\V2\ExternalLogisticsService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Throwable;
+
+class RefreshLrTrackingJob implements ShouldQueue
+{
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use SerializesModels;
+
+    public $tries = 3;
+    public $timeout = 120;
+
+    protected $trackingId;
+    protected $userId;
+    protected $reason;
+
+    public function __construct(int $trackingId, ?int $userId = null, string $reason = 'manual')
+    {
+        $this->trackingId = $trackingId;
+        $this->userId = $userId;
+        $this->reason = $reason;
+        $this->onQueue('integrations');
+    }
+
+    public function backoff(): array
+    {
+        return [60, 300, 900];
+    }
+
+    public function handle(ExternalLogisticsService $integrations, ActivityLogService $logs): void
+    {
+        $tracking = Tracking::query()->find($this->trackingId);
+        if (!$tracking) {
+            return;
+        }
+
+        $user = $this->userId ? User::query()->find($this->userId) : null;
+        $integrations->syncTracking($tracking, $user);
+
+        $logs->logSystem('success', 'LR Tracking Sync Complete', 'Queued LR tracking sync completed.', [
+            'tracking_id' => $tracking->id,
+            'lrNumber' => $tracking->lrNumber,
+            'vehicleNo' => $tracking->vehicleNo,
+            'reason' => $this->reason,
+        ], $this->userId);
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        app(ActivityLogService::class)->logThrowable($exception, 'LR Tracking Sync Job Failed', [
+            'tracking_id' => $this->trackingId,
+            'reason' => $this->reason,
+        ], null, $this->userId, null, 'danger');
+    }
+}
