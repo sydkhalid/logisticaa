@@ -42,4 +42,20 @@ class V2Routing
 
         return asset($prefix === '' ? $path : $prefix . '/' . $path);
     }
+
+    public static function publicAsset(string $path): string
+    {
+        $path = ltrim($path, '/');
+        $assetUrl = config('app.asset_url');
+
+        if ($assetUrl) {
+            return rtrim($assetUrl, '/') . '/' . $path;
+        }
+
+        if (app()->runningInConsole()) {
+            return asset($path);
+        }
+
+        return request()->getSchemeAndHttpHost() . '/' . $path;
+    }
 }

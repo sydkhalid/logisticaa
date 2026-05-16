@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="{{ \App\Support\V2Routing::asset('assets/vendors/css/vendor.bundle.base.css') }}">
   <link rel="stylesheet" href="{{ \App\Support\V2Routing::asset('assets/vendors/font-awesome/css/font-awesome.min.css') }}">
   <link rel="stylesheet" href="{{ \App\Support\V2Routing::asset('assets/vendors/mdi/css/materialdesignicons.min.css') }}">
-  <link rel="stylesheet" href="{{ asset('plugins/datatables-bs4/css/dataTables.bootstrap4.min.css') }}">
-  <link rel="stylesheet" href="{{ asset('plugins/datatables-responsive/css/responsive.bootstrap4.min.css') }}">
+  <link rel="stylesheet" href="{{ \App\Support\V2Routing::publicAsset('plugins/datatables-bs4/css/dataTables.bootstrap4.min.css') }}">
+  <link rel="stylesheet" href="{{ \App\Support\V2Routing::publicAsset('plugins/datatables-responsive/css/responsive.bootstrap4.min.css') }}">
   <link rel="stylesheet" href="{{ \App\Support\V2Routing::asset('assets/vendors/select2/select2.min.css') }}">
   <link rel="stylesheet" href="{{ \App\Support\V2Routing::asset('assets/vendors/select2-bootstrap-theme/select2-bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ \App\Support\V2Routing::asset('assets/vendors/sweetalert2/sweetalert2.min.css') }}">
