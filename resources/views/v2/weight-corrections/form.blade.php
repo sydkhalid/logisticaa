@@ -11,11 +11,16 @@
 
 @section('content')
   <div class="row">
-    <div class="col-lg-10 grid-margin stretch-card">
-      <div class="card">
+    <div class="col-lg-12 grid-margin stretch-card">
+      <div class="card v2-form-card">
         <div class="card-body">
-          <h4 class="card-title">{{ $pageTitle }}</h4>
-          <p class="card-description">Fetch LR dimensions first, then submit the corrected weight payload to BOCSH.</p>
+          <div class="v2-card-heading mb-3">
+            <span class="v2-card-heading__icon"><i class="mdi mdi-weight"></i></span>
+            <div>
+              <h4 class="card-title mb-1">{{ $pageTitle }}</h4>
+              <p class="card-description mb-0">Fetch LR dimensions first, then submit the corrected weight payload to BOCSH.</p>
+            </div>
+          </div>
 
           <form method="POST" action="{{ $formAction }}" class="forms-sample" id="weight-form">
             @csrf
@@ -29,7 +34,10 @@
                 <div class="d-flex gap-2">
                   <input type="text" class="form-control" id="lrNumber" name="lrNumber" value="{{ old('lrNumber', $weight->lrNumber) }}" list="recent-lrs" {{ $isEdit ? 'readonly' : '' }} required>
                   @unless ($isEdit)
-                    <button type="button" class="btn btn-outline-primary" id="fetch-lr">Fetch</button>
+                    <button type="button" class="btn btn-outline-primary btn-icon-text" id="fetch-lr">
+                      <i class="mdi mdi-database-search-outline"></i>
+                      <span>Fetch</span>
+                    </button>
                   @endunless
                 </div>
                 <datalist id="recent-lrs">
@@ -61,8 +69,14 @@
             </div>
 
             <div class="d-flex justify-content-end gap-2">
-              <a href="{{ route('v2.weight-corrections.index') }}" class="btn btn-light">Cancel</a>
-              <button type="submit" class="btn btn-primary">{{ $isEdit ? 'Update Weight' : 'Save Weight' }}</button>
+              <a href="{{ route('v2.weight-corrections.index') }}" class="btn btn-light btn-icon-text">
+                <i class="mdi mdi-arrow-left"></i>
+                <span>Cancel</span>
+              </a>
+              <button type="submit" class="btn btn-primary btn-icon-text">
+                <i class="mdi mdi-content-save-outline"></i>
+                <span>{{ $isEdit ? 'Update Weight' : 'Save Weight' }}</span>
+              </button>
             </div>
           </form>
         </div>
@@ -104,7 +118,7 @@
           }
 
           button.disabled = true;
-          button.textContent = 'Fetching...';
+          button.innerHTML = '<i class="mdi mdi-loading mdi-spin"></i><span>Fetching...</span>';
 
           fetch('{{ route('v2.weight-corrections.fetch-lr') }}', {
             method: 'POST',
@@ -140,7 +154,7 @@
             })
             .finally(function () {
               button.disabled = false;
-              button.textContent = 'Fetch';
+              button.innerHTML = '<i class="mdi mdi-database-search-outline"></i><span>Fetch</span>';
             });
         });
       });

@@ -10,11 +10,16 @@
 
 @section('content')
   <div class="row">
-    <div class="col-lg-10 grid-margin stretch-card">
-      <div class="card">
+    <div class="col-lg-12 grid-margin stretch-card">
+      <div class="card v2-form-card">
         <div class="card-body">
-          <h4 class="card-title">{{ $pageTitle }}</h4>
-          <p class="card-description">Accepted formats: JPG, JPEG, PNG, and PDF. If this LR already has an uploaded EPOD, the new Travis re-upload API will be used automatically.</p>
+          <div class="v2-card-heading mb-3">
+            <span class="v2-card-heading__icon"><i class="mdi mdi-cloud-upload-outline"></i></span>
+            <div>
+              <h4 class="card-title mb-1">{{ $pageTitle }}</h4>
+              <p class="card-description mb-0">Accepted formats: JPG, JPEG, PNG, and PDF. If this LR already has an uploaded EPOD, the new Travis re-upload API will be used automatically.</p>
+            </div>
+          </div>
 
           <form method="POST" action="{{ route('v2.epods.store') }}" class="forms-sample" enctype="multipart/form-data">
             @csrf
@@ -40,8 +45,14 @@
             </div>
 
             <div class="d-flex justify-content-end gap-2">
-              <a href="{{ route('v2.epods.index') }}" class="btn btn-light">Cancel</a>
-              <button type="submit" class="btn btn-primary">Upload EPOD</button>
+              <a href="{{ route('v2.epods.index') }}" class="btn btn-light btn-icon-text">
+                <i class="mdi mdi-arrow-left"></i>
+                <span>Cancel</span>
+              </a>
+              <button type="submit" class="btn btn-primary btn-icon-text">
+                <i class="mdi mdi-cloud-upload-outline"></i>
+                <span>Upload EPOD</span>
+              </button>
             </div>
           </form>
         </div>

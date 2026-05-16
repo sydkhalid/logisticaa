@@ -12,13 +12,17 @@
     <div class="col-lg-12 grid-margin stretch-card">
       <div class="card">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-              <h4 class="card-title mb-1">{{ $showCompleted ? 'Completed LR Records' : 'Active LR Records' }}</h4>
-              <p class="card-description mb-0">Track shipment state, location sync, and delivery readiness.</p>
+          <div class="v2-section-toolbar">
+            <div class="v2-card-heading">
+              <span class="v2-card-heading__icon"><i class="mdi mdi-clipboard-text-search-outline"></i></span>
+              <div>
+                <h4 class="card-title mb-1">{{ $showCompleted ? 'Completed LR Records' : 'Active LR Records' }}</h4>
+                <p class="card-description mb-0">Track shipment state, location sync, and delivery readiness.</p>
+              </div>
             </div>
             <a href="{{ route('v2.lr-trackings.create') }}" class="btn btn-primary btn-icon-text">
-              <i class="ti-plus btn-icon-prepend"></i> Add LR Tracking
+              <i class="mdi mdi-plus"></i>
+              <span>Add LR Tracking</span>
             </a>
           </div>
           <div class="table-responsive">

@@ -9,7 +9,6 @@
       <div class="main-panel">
         <div class="content-wrapper">
           @include('v2.layouts.partials.page-header')
-          @include('v2.layouts.partials.consent-banner')
           @include('v2.layouts.partials.flash')
           @yield('content')
         </div>
@@ -36,6 +35,13 @@
   <script src="{{ \App\Support\V2Routing::publicAsset('plugins/datatables-bs4/js/dataTables.bootstrap4.min.js') }}"></script>
   <script src="{{ \App\Support\V2Routing::publicAsset('plugins/datatables-responsive/js/dataTables.responsive.min.js') }}"></script>
   <script src="{{ \App\Support\V2Routing::publicAsset('plugins/datatables-responsive/js/responsive.bootstrap4.min.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::publicAsset('plugins/jszip/jszip.min.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::publicAsset('plugins/pdfmake/pdfmake.min.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::publicAsset('plugins/pdfmake/vfs_fonts.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::publicAsset('plugins/datatables-buttons/js/dataTables.buttons.min.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::publicAsset('plugins/datatables-buttons/js/buttons.bootstrap4.min.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::publicAsset('plugins/datatables-buttons/js/buttons.html5.min.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::publicAsset('plugins/datatables-buttons/js/buttons.print.min.js') }}"></script>
   <script src="{{ \App\Support\V2Routing::asset('assets/vendors/select2/select2.min.js') }}"></script>
   <script src="{{ \App\Support\V2Routing::asset('assets/vendors/sweetalert2/sweetalert2.min.js') }}"></script>
   <script src="{{ \App\Support\V2Routing::asset('assets/js/off-canvas.js') }}"></script>

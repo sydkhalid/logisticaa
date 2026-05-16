@@ -19,18 +19,41 @@
       <div class="card">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
-            <div>
-              <h4 class="card-title mb-1">Reporting Window</h4>
-              <p class="card-description mb-0">Filter operational activity and export the same range as CSV.</p>
+            <div class="v2-report-heading">
+              <span class="v2-report-heading__icon">
+                <i class="mdi mdi-file-chart"></i>
+              </span>
+              <div>
+                <h4 class="card-title mb-1">Reporting Window</h4>
+                <p class="card-description mb-0">Filter operational activity and export the same range as CSV.</p>
+              </div>
             </div>
-            <div class="d-flex flex-wrap gap-2">
-              <a href="{{ route('v2.reports.print', ['from' => $filters['from'], 'to' => $filters['to']]) }}" target="_blank" class="btn btn-primary btn-sm">Print / PDF</a>
-              <a href="{{ route('v2.reports.export', ['dataset' => 'trackings', 'from' => $filters['from'], 'to' => $filters['to']]) }}" class="btn btn-outline-primary btn-sm">CSV Trackings</a>
-              <a href="{{ route('v2.reports.export', ['dataset' => 'trackings', 'from' => $filters['from'], 'to' => $filters['to'], 'format' => 'xls']) }}" class="btn btn-outline-primary btn-sm">Excel Trackings</a>
-              <a href="{{ route('v2.reports.export', ['dataset' => 'vehicles', 'from' => $filters['from'], 'to' => $filters['to'], 'format' => 'xls']) }}" class="btn btn-outline-info btn-sm">Excel Vehicles</a>
-              <a href="{{ route('v2.reports.export', ['dataset' => 'epods', 'from' => $filters['from'], 'to' => $filters['to'], 'format' => 'xls']) }}" class="btn btn-outline-success btn-sm">Excel EPOD</a>
+            <div class="v2-report-actions d-flex flex-wrap gap-2">
+              <a href="{{ route('v2.reports.print', ['from' => $filters['from'], 'to' => $filters['to']]) }}" target="_blank" class="btn btn-primary btn-sm btn-icon-text">
+                <i class="mdi mdi-printer btn-icon-prepend"></i>
+                <span>Print / PDF</span>
+              </a>
+              <a href="{{ route('v2.reports.export', ['dataset' => 'trackings', 'from' => $filters['from'], 'to' => $filters['to']]) }}" class="btn btn-outline-primary btn-sm btn-icon-text">
+                <i class="mdi mdi-file-delimited btn-icon-prepend"></i>
+                <span>CSV Trackings</span>
+              </a>
+              <a href="{{ route('v2.reports.export', ['dataset' => 'trackings', 'from' => $filters['from'], 'to' => $filters['to'], 'format' => 'xls']) }}" class="btn btn-outline-primary btn-sm btn-icon-text">
+                <i class="mdi mdi-file-excel btn-icon-prepend"></i>
+                <span>Excel Trackings</span>
+              </a>
+              <a href="{{ route('v2.reports.export', ['dataset' => 'vehicles', 'from' => $filters['from'], 'to' => $filters['to'], 'format' => 'xls']) }}" class="btn btn-outline-info btn-sm btn-icon-text">
+                <i class="mdi mdi-truck btn-icon-prepend"></i>
+                <span>Excel Vehicles</span>
+              </a>
+              <a href="{{ route('v2.reports.export', ['dataset' => 'epods', 'from' => $filters['from'], 'to' => $filters['to'], 'format' => 'xls']) }}" class="btn btn-outline-success btn-sm btn-icon-text">
+                <i class="mdi mdi-cloud-upload btn-icon-prepend"></i>
+                <span>Excel EPOD</span>
+              </a>
               @if ($weightsEnabled)
-                <a href="{{ route('v2.reports.export', ['dataset' => 'weights', 'from' => $filters['from'], 'to' => $filters['to'], 'format' => 'xls']) }}" class="btn btn-outline-warning btn-sm">Excel Weights</a>
+                <a href="{{ route('v2.reports.export', ['dataset' => 'weights', 'from' => $filters['from'], 'to' => $filters['to'], 'format' => 'xls']) }}" class="btn btn-outline-warning btn-sm btn-icon-text">
+                  <i class="mdi mdi-weight btn-icon-prepend"></i>
+                  <span>Excel Weights</span>
+                </a>
               @endif
             </div>
           </div>
@@ -45,8 +68,14 @@
               <input type="date" class="form-control" id="to" name="to" value="{{ $filters['to'] }}">
             </div>
             <div class="col-md-4 form-group d-flex align-items-end gap-2">
-              <button type="submit" class="btn btn-primary">Apply Filters</button>
-              <a href="{{ route('v2.reports.index') }}" class="btn btn-light">Reset</a>
+              <button type="submit" class="btn btn-primary btn-icon-text">
+                <i class="mdi mdi-filter btn-icon-prepend"></i>
+                <span>Apply Filters</span>
+              </button>
+              <a href="{{ route('v2.reports.index') }}" class="btn btn-light btn-icon-text">
+                <i class="mdi mdi-restore btn-icon-prepend"></i>
+                <span>Reset</span>
+              </a>
             </div>
           </form>
         </div>
@@ -56,54 +85,72 @@
 
   <div class="row">
     <div class="col-md-4 grid-margin stretch-card">
-      <div class="card card-tale">
+      <div class="card card-tale v2-report-metric">
         <div class="card-body">
-          <p class="mb-2">Trackings Created</p>
+          <div class="v2-report-metric__head">
+            <p class="mb-2">Trackings Created</p>
+            <span class="v2-report-metric__icon"><i class="mdi mdi-clipboard-text"></i></span>
+          </div>
           <p class="fs-30 mb-2">{{ $summary['trackingsCreated'] }}</p>
           <p class="mb-0">Records opened in the selected window.</p>
         </div>
       </div>
     </div>
     <div class="col-md-4 grid-margin stretch-card">
-      <div class="card card-dark-blue">
+      <div class="card card-dark-blue v2-report-metric">
         <div class="card-body">
-          <p class="mb-2">Closed Shipments</p>
+          <div class="v2-report-metric__head">
+            <p class="mb-2">Closed Shipments</p>
+            <span class="v2-report-metric__icon"><i class="mdi mdi-check-circle"></i></span>
+          </div>
           <p class="fs-30 mb-2">{{ $summary['trackingsClosed'] }}</p>
           <p class="mb-0">Delivered and EPOD-uploaded LR records.</p>
         </div>
       </div>
     </div>
     <div class="col-md-4 grid-margin stretch-card">
-      <div class="card card-light-blue">
+      <div class="card card-light-blue v2-report-metric">
         <div class="card-body">
-          <p class="mb-2">EPOD Uploaded</p>
+          <div class="v2-report-metric__head">
+            <p class="mb-2">EPOD Uploaded</p>
+            <span class="v2-report-metric__icon"><i class="mdi mdi-cloud-upload"></i></span>
+          </div>
           <p class="fs-30 mb-2">{{ $summary['epodsUploaded'] }}</p>
           <p class="mb-0">Successful proof-of-delivery uploads.</p>
         </div>
       </div>
     </div>
     <div class="col-md-4 grid-margin stretch-card">
-      <div class="card card-light-danger">
+      <div class="card card-light-danger v2-report-metric">
         <div class="card-body">
-          <p class="mb-2">Weight Corrections</p>
+          <div class="v2-report-metric__head">
+            <p class="mb-2">Weight Corrections</p>
+            <span class="v2-report-metric__icon"><i class="mdi mdi-weight"></i></span>
+          </div>
           <p class="fs-30 mb-2">{{ $summary['weightCorrections'] }}</p>
           <p class="mb-0">Corrections recorded in the selected window.</p>
         </div>
       </div>
     </div>
     <div class="col-md-4 grid-margin stretch-card">
-      <div class="card">
+      <div class="card v2-report-metric">
         <div class="card-body">
-          <p class="mb-2">Active LR</p>
+          <div class="v2-report-metric__head">
+            <p class="mb-2">Active LR</p>
+            <span class="v2-report-metric__icon"><i class="mdi mdi-progress-clock"></i></span>
+          </div>
           <p class="fs-30 mb-2">{{ $summary['trackingsActive'] }}</p>
           <p class="mb-0">Open LR records still in progress.</p>
         </div>
       </div>
     </div>
     <div class="col-md-4 grid-margin stretch-card">
-      <div class="card">
+      <div class="card v2-report-metric">
         <div class="card-body">
-          <p class="mb-2">Pending Location Sync</p>
+          <div class="v2-report-metric__head">
+            <p class="mb-2">Pending Location Sync</p>
+            <span class="v2-report-metric__icon"><i class="mdi mdi-map-marker-radius"></i></span>
+          </div>
           <p class="fs-30 mb-2">{{ $summary['pendingLocationSyncs'] }}</p>
           <p class="mb-0">Active LR records still missing live coordinates.</p>
         </div>
@@ -116,9 +163,14 @@
       <div class="card">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-              <p class="card-title mb-0">Tracking Status Mix</p>
-              <p class="text-muted mb-0">Breakdown of LR status values in the filtered reporting window.</p>
+            <div class="v2-report-heading">
+              <span class="v2-report-heading__icon">
+                <i class="mdi mdi-chart-donut"></i>
+              </span>
+              <div>
+                <p class="card-title mb-0">Tracking Status Mix</p>
+                <p class="text-muted mb-0">Breakdown of LR status values in the filtered reporting window.</p>
+              </div>
             </div>
           </div>
           <canvas id="tracking-status-chart" height="120"></canvas>
@@ -128,7 +180,12 @@
     <div class="col-md-5 grid-margin stretch-card">
       <div class="card">
         <div class="card-body">
-          <p class="card-title">Fleet Snapshot</p>
+          <div class="v2-report-heading mb-3">
+            <span class="v2-report-heading__icon">
+              <i class="mdi mdi-truck"></i>
+            </span>
+            <p class="card-title mb-0">Fleet Snapshot</p>
+          </div>
           <div class="detail-grid">
             <div><span>Total Vehicles</span><strong>{{ $fleetSummary['totalVehicles'] }}</strong></div>
             <div><span>Own Vehicles</span><strong>{{ $fleetSummary['ownVehicles'] }}</strong></div>
@@ -148,7 +205,10 @@
     <div class="col-lg-12 grid-margin stretch-card">
       <div class="card">
         <div class="card-body">
-          <h4 class="card-title">Recent LR Activity</h4>
+          <h4 class="card-title v2-report-table-title">
+            <span class="v2-report-table-title__icon"><i class="mdi mdi-clipboard-text"></i></span>
+            <span>Recent LR Activity</span>
+          </h4>
           <div class="table-responsive">
             <table class="table table-striped v2-table" id="report-trackings-table">
               <thead>
@@ -188,7 +248,10 @@
     <div class="col-md-6 grid-margin stretch-card">
       <div class="card">
         <div class="card-body">
-          <h4 class="card-title">Recent Weight Corrections</h4>
+          <h4 class="card-title v2-report-table-title">
+            <span class="v2-report-table-title__icon"><i class="mdi mdi-weight"></i></span>
+            <span>Recent Weight Corrections</span>
+          </h4>
           <div class="table-responsive">
             <table class="table table-striped v2-table" id="report-weights-table">
               <thead>
@@ -223,7 +286,10 @@
     <div class="col-md-6 grid-margin stretch-card">
       <div class="card">
         <div class="card-body">
-          <h4 class="card-title">Recent EPOD Uploads</h4>
+          <h4 class="card-title v2-report-table-title">
+            <span class="v2-report-table-title__icon"><i class="mdi mdi-cloud-upload"></i></span>
+            <span>Recent EPOD Uploads</span>
+          </h4>
           <div class="table-responsive">
             <table class="table table-striped v2-table" id="report-epods-table">
               <thead>

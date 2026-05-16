@@ -11,13 +11,17 @@
     <div class="col-lg-12 grid-margin stretch-card">
       <div class="card">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-              <h4 class="card-title mb-1">EPOD Upload History</h4>
-              <p class="card-description mb-0">Upload proof of delivery files without changing the existing Laravel pages.</p>
+          <div class="v2-section-toolbar">
+            <div class="v2-card-heading">
+              <span class="v2-card-heading__icon"><i class="mdi mdi-cloud-upload-outline"></i></span>
+              <div>
+                <h4 class="card-title mb-1">EPOD Upload History</h4>
+                <p class="card-description mb-0">Upload proof of delivery files without changing the existing Laravel pages.</p>
+              </div>
             </div>
             <a href="{{ route('v2.epods.create') }}" class="btn btn-primary btn-icon-text">
-              <i class="ti-upload btn-icon-prepend"></i> Upload EPOD
+              <i class="mdi mdi-cloud-upload-outline"></i>
+              <span>Upload EPOD</span>
             </a>
           </div>
           <div class="table-responsive">
@@ -55,7 +59,7 @@
           { data: 'lrNumber', name: 'lrNumber' },
           { data: 'status', name: 'status' },
           { data: 'created_at', name: 'created_at' },
-          { data: 'actions', name: 'actions', orderable: false, searchable: false }
+          { data: 'actions', name: 'actions', orderable: false, searchable: false, className: 'text-end' }
         ]
       });
     });

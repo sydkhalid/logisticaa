@@ -10,9 +10,12 @@
 @section('content')
   <div class="row">
     <div class="col-md-5 grid-margin stretch-card">
-      <div class="card">
+      <div class="card v2-detail-card">
         <div class="card-body">
-          <h4 class="card-title">Vehicle Summary</h4>
+          <div class="v2-card-heading mb-3">
+            <span class="v2-card-heading__icon"><i class="mdi mdi-truck-delivery-outline"></i></span>
+            <h4 class="card-title mb-0">Vehicle Summary</h4>
+          </div>
           <div class="detail-grid">
             <div><span>Vehicle Number</span><strong>{{ $vehicle->vehicleNo }}</strong></div>
             <div><span>Mobile Number</span><strong>{{ $vehicle->mobileNo }}</strong></div>
@@ -38,9 +41,12 @@
       </div>
     </div>
     <div class="col-md-7 grid-margin stretch-card">
-      <div class="card">
+      <div class="card v2-detail-card">
         <div class="card-body">
-          <h4 class="card-title">Map Preview</h4>
+          <div class="v2-card-heading mb-3">
+            <span class="v2-card-heading__icon"><i class="mdi mdi-map-marker-radius"></i></span>
+            <h4 class="card-title mb-0">Map Preview</h4>
+          </div>
           @if (!empty($details['latitude']) && !empty($details['longitude']))
             <iframe
               class="map-frame"

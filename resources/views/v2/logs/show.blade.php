@@ -34,12 +34,15 @@
 @section('content')
   <div class="row">
     <div class="col-lg-12 grid-margin stretch-card">
-      <div class="card">
+      <div class="card v2-detail-card">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start mb-4">
-            <div>
-              <h4 class="card-title mb-1">{{ $logEntry->title }}</h4>
-              <p class="card-description mb-0">{{ $logEntry->description }}</p>
+            <div class="v2-card-heading">
+              <span class="v2-card-heading__icon"><i class="mdi mdi-clipboard-text-clock-outline"></i></span>
+              <div>
+                <h4 class="card-title mb-1">{{ $logEntry->title }}</h4>
+                <p class="card-description mb-0">{{ $logEntry->description }}</p>
+              </div>
             </div>
             <span class="badge badge-{{ $badgeMap[$logEntry->type] ?? 'secondary' }}">{{ strtoupper((string) $logEntry->type) }}</span>
           </div>
@@ -71,11 +74,17 @@
             </div>
           </div>
 
-          <h5 class="mb-3">Request Info</h5>
+          <div class="v2-card-heading mb-3">
+            <span class="v2-card-heading__icon"><i class="mdi mdi-code-json"></i></span>
+            <h5 class="mb-0">Request Info</h5>
+          </div>
           <pre class="v2-json">{{ $prettyInfo }}</pre>
 
           <div class="mt-4">
-            <a href="{{ route('v2.logs.index') }}" class="btn btn-outline-primary">Back To Logs</a>
+            <a href="{{ route('v2.logs.index') }}" class="btn btn-outline-primary btn-icon-text">
+              <i class="mdi mdi-arrow-left"></i>
+              <span>Back To Logs</span>
+            </a>
           </div>
         </div>
       </div>

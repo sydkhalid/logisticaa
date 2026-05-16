@@ -26,11 +26,18 @@
 
 <div class="dashboard-tab-panel">
   <div class="dashboard-tab-panel__head">
-    <div>
-      <p class="card-title mb-1">{{ $title }}</p>
-      <p class="card-description mb-0">{{ $description }}</p>
+    <div class="dashboard-title-block">
+      <span class="dashboard-title-icon dashboard-title-icon--slate">
+        <i class="mdi mdi-format-list-bulleted-square"></i>
+      </span>
+      <div>
+        <p class="card-title mb-0">{{ $title }}</p>
+      </div>
     </div>
-    <a href="{{ $actionUrl }}" class="btn btn-outline-primary btn-sm">{{ $actionLabel }}</a>
+    <a href="{{ $actionUrl }}" class="btn btn-outline-primary btn-sm btn-icon-text">
+      <i class="mdi mdi-open-in-new"></i>
+      <span>{{ $actionLabel }}</span>
+    </a>
   </div>
 
   <div class="table-responsive">
@@ -75,7 +82,10 @@
               @endif
             </td>
             <td class="text-right">
-              <a href="{{ route('v2.lr-trackings.show', $record) }}" class="btn btn-light btn-sm">View</a>
+              <a href="{{ route('v2.lr-trackings.show', $record) }}" class="btn btn-light btn-sm btn-icon-text">
+                <i class="mdi mdi-eye-outline"></i>
+                <span>View</span>
+              </a>
             </td>
           </tr>
         @empty

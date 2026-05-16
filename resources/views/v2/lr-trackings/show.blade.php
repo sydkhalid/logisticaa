@@ -10,16 +10,22 @@
 @section('content')
   <div class="row">
     <div class="col-lg-12 grid-margin stretch-card">
-      <div class="card">
+      <div class="card v2-detail-card">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-              <h4 class="card-title mb-1">LR Tracking Details</h4>
-              <p class="card-description mb-0">Shipment metadata, location payload, and delivery dimensions.</p>
+            <div class="v2-card-heading">
+              <span class="v2-card-heading__icon"><i class="mdi mdi-clipboard-text-search-outline"></i></span>
+              <div>
+                <h4 class="card-title mb-1">LR Tracking Details</h4>
+                <p class="card-description mb-0">Shipment metadata, location payload, and delivery dimensions.</p>
+              </div>
             </div>
             <form method="POST" action="{{ route('v2.lr-trackings.refresh', $tracking) }}">
               @csrf
-              <button type="submit" class="btn btn-primary btn-sm">Refresh Location</button>
+              <button type="submit" class="btn btn-primary btn-sm btn-icon-text">
+                <i class="mdi mdi-map-marker-radius"></i>
+                <span>Refresh Location</span>
+              </button>
             </form>
           </div>
 

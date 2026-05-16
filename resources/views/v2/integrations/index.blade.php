@@ -9,6 +9,11 @@
     'warning' => ['label' => 'Attention', 'class' => 'warning'],
     'offline' => ['label' => 'Offline', 'class' => 'danger'],
   ];
+  $integrationIcons = [
+    'fleetx' => 'mdi-truck-fast-outline',
+    'wheelseye' => 'mdi-map-marker-path',
+    'travis' => 'mdi-api',
+  ];
 @endphp
 
 @section('styles')
@@ -85,36 +90,48 @@
 @section('content')
   <div class="row">
     <div class="col-md-3 grid-margin stretch-card">
-      <div class="card card-tale">
+      <div class="card card-tale v2-stat-card">
         <div class="card-body">
-          <p class="mb-4">Online</p>
+          <div class="v2-stat-card__head mb-4">
+            <p class="mb-0">Online</p>
+            <span class="v2-stat-card__icon"><i class="mdi mdi-check-circle-outline"></i></span>
+          </div>
           <p class="fs-30 mb-2">{{ $summary['online'] }}</p>
           <p>Integrations fully healthy</p>
         </div>
       </div>
     </div>
     <div class="col-md-3 grid-margin stretch-card">
-      <div class="card card-light-danger">
+      <div class="card card-light-danger v2-stat-card">
         <div class="card-body">
-          <p class="mb-4">Attention</p>
+          <div class="v2-stat-card__head mb-4">
+            <p class="mb-0">Attention</p>
+            <span class="v2-stat-card__icon"><i class="mdi mdi-alert-outline"></i></span>
+          </div>
           <p class="fs-30 mb-2">{{ $summary['warning'] }}</p>
           <p>Integrations with partial coverage</p>
         </div>
       </div>
     </div>
     <div class="col-md-3 grid-margin stretch-card">
-      <div class="card card-dark-blue">
+      <div class="card card-dark-blue v2-stat-card">
         <div class="card-body">
-          <p class="mb-4">Offline</p>
+          <div class="v2-stat-card__head mb-4">
+            <p class="mb-0">Offline</p>
+            <span class="v2-stat-card__icon"><i class="mdi mdi-close-circle-outline"></i></span>
+          </div>
           <p class="fs-30 mb-2">{{ $summary['offline'] }}</p>
           <p>Integrations needing direct repair</p>
         </div>
       </div>
     </div>
     <div class="col-md-3 grid-margin stretch-card">
-      <div class="card">
+      <div class="card v2-stat-card">
         <div class="card-body">
-          <p class="mb-4">Checked At</p>
+          <div class="v2-stat-card__head mb-4">
+            <p class="mb-0">Checked At</p>
+            <span class="v2-stat-card__icon"><i class="mdi mdi-clock-check-outline"></i></span>
+          </div>
           <h5 class="mb-2">{{ $checkedAt }}</h5>
           <p>{{ $pageDescription }}</p>
         </div>
@@ -132,9 +149,12 @@
         <div class="card integration-card integration-card--{{ $item['status'] }}">
           <div class="card-body d-flex flex-column">
             <div class="integration-toolbar mb-3">
-              <div>
-                <h4 class="card-title mb-1">{{ $item['label'] }}</h4>
-                <p class="card-description mb-0">{{ $item['message'] }}</p>
+              <div class="v2-card-heading">
+                <span class="v2-card-heading__icon"><i class="mdi {{ $integrationIcons[$key] ?? 'mdi-link-variant' }}"></i></span>
+                <div>
+                  <h4 class="card-title mb-1">{{ $item['label'] }}</h4>
+                  <p class="card-description mb-0">{{ $item['message'] }}</p>
+                </div>
               </div>
               <span class="badge badge-{{ $state['class'] }}">{{ $state['label'] }}</span>
             </div>
@@ -262,17 +282,26 @@
             @endif
 
             <div class="integration-actions mt-auto pt-4">
-              <a href="{{ route('v2.settings.edit') }}" class="btn btn-outline-primary btn-sm">Open Settings</a>
+              <a href="{{ route('v2.settings.edit') }}" class="btn btn-outline-primary btn-sm btn-icon-text">
+                <i class="mdi mdi-cog-outline"></i>
+                <span>Open Settings</span>
+              </a>
 
               @if ($key === 'fleetx')
                 <form method="POST" action="{{ route('v2.integrations.fleetx.refresh-token') }}">
                   @csrf
-                  <button type="submit" class="btn btn-primary btn-sm">Refresh FleetX Token</button>
+                  <button type="submit" class="btn btn-primary btn-sm btn-icon-text">
+                    <i class="mdi mdi-refresh"></i>
+                    <span>Refresh FleetX Token</span>
+                  </button>
                 </form>
               @elseif ($key === 'travis')
                 <form method="POST" action="{{ route('v2.integrations.travis.refresh-token') }}">
                   @csrf
-                  <button type="submit" class="btn btn-primary btn-sm">Refresh Travis Token</button>
+                  <button type="submit" class="btn btn-primary btn-sm btn-icon-text">
+                    <i class="mdi mdi-refresh"></i>
+                    <span>Refresh Travis Token</span>
+                  </button>
                 </form>
               @endif
             </div>

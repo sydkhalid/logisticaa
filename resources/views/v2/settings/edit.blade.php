@@ -9,14 +9,20 @@
 @section('content')
   <div class="row">
     <div class="col-lg-12 grid-margin stretch-card">
-      <div class="card">
+      <div class="card v2-form-card">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start mb-3">
-            <div>
-              <h4 class="card-title mb-1">Application Settings</h4>
-              <p class="card-description mb-0">Manage the shared connection values used across the logistics workflow.</p>
+          <div class="v2-section-toolbar align-items-start">
+            <div class="v2-card-heading">
+              <span class="v2-card-heading__icon"><i class="mdi mdi-cog-outline"></i></span>
+              <div>
+                <h4 class="card-title mb-1">Application Settings</h4>
+                <p class="card-description mb-0">Manage the shared connection values used across the logistics workflow.</p>
+              </div>
             </div>
-            <a href="{{ route('v2.integrations.index') }}" class="btn btn-outline-primary btn-sm">Open Health Check</a>
+            <a href="{{ route('v2.integrations.index') }}" class="btn btn-outline-primary btn-sm btn-icon-text">
+              <i class="mdi mdi-heart-pulse"></i>
+              <span>Open Health Check</span>
+            </a>
           </div>
 
           <form method="POST" action="{{ route('v2.settings.update') }}" class="forms-sample">
@@ -55,7 +61,10 @@
             </div>
 
             <div class="d-flex justify-content-end">
-              <button type="submit" class="btn btn-primary">Update Settings</button>
+              <button type="submit" class="btn btn-primary btn-icon-text">
+                <i class="mdi mdi-content-save-outline"></i>
+                <span>Update Settings</span>
+              </button>
             </div>
           </form>
         </div>

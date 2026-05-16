@@ -11,13 +11,17 @@
     <div class="col-lg-12 grid-margin stretch-card">
       <div class="card">
         <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-              <h4 class="card-title mb-1">Own Vehicle Register</h4>
-              <p class="card-description mb-0">Vehicles tracked through the WheelsEye integration.</p>
+          <div class="v2-section-toolbar">
+            <div class="v2-card-heading">
+              <span class="v2-card-heading__icon"><i class="mdi mdi-truck-outline"></i></span>
+              <div>
+                <h4 class="card-title mb-1">Own Vehicle Register</h4>
+                <p class="card-description mb-0">Vehicles tracked through the WheelsEye integration.</p>
+              </div>
             </div>
             <a href="{{ route('v2.vehicles.create') }}" class="btn btn-primary btn-icon-text">
-              <i class="ti-plus btn-icon-prepend"></i> Add Vehicle
+              <i class="mdi mdi-plus"></i>
+              <span>Add Vehicle</span>
             </a>
           </div>
           <div class="table-responsive">

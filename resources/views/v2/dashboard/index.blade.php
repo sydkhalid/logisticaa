@@ -61,6 +61,23 @@
 @endphp
 
 @section('content')
+  <details class="v2-consent-disclosure" open>
+    <summary class="v2-consent-disclosure__summary">
+      <span class="v2-consent-disclosure__title">
+        <span class="v2-consent-disclosure__icon">
+          <i class="mdi mdi-map-marker-radius"></i>
+        </span>
+        <span>Location Consent</span>
+      </span>
+      <span class="v2-consent-disclosure__toggle" aria-hidden="true">
+        <i class="mdi mdi-chevron-down"></i>
+      </span>
+    </summary>
+    <div class="v2-consent-disclosure__body">
+      @include('v2.layouts.partials.consent-banner')
+    </div>
+  </details>
+
   <div class="dashboard-summary-strip">
     @foreach ($summaryCards as $card)
       <div class="dashboard-summary-card {{ $card['accent'] }}">
@@ -82,11 +99,18 @@
         <div class="card dashboard-surface">
           <div class="card-body">
             <div class="dashboard-card-head">
-              <div>
-                <p class="card-title mb-1">Shipment Flow</p>
-                <p class="card-description mb-0">Current shipment mix across active, delayed, delivered, and EPOD-closed LR records.</p>
+              <div class="dashboard-title-block">
+                <span class="dashboard-title-icon dashboard-title-icon--teal">
+                  <i class="mdi mdi-chart-donut"></i>
+                </span>
+                <div>
+                  <p class="card-title mb-0">Shipment Flow</p>
+                </div>
               </div>
-              <a href="{{ route('v2.lr-trackings.index') }}" class="btn btn-outline-primary btn-sm">Open LR</a>
+              <a href="{{ route('v2.lr-trackings.index') }}" class="btn btn-outline-primary btn-sm btn-icon-text">
+                <i class="mdi mdi-format-list-bulleted"></i>
+                <span>Open LR</span>
+              </a>
             </div>
 
             @if ($hasShipmentData)
@@ -122,11 +146,18 @@
         <div class="card dashboard-surface">
           <div class="card-body">
             <div class="dashboard-card-head">
-              <div>
-                <p class="card-title mb-1">7-Day Throughput</p>
-                <p class="card-description mb-0">Daily LR creation, EPOD closure, and weight correction activity over the last seven days.</p>
+              <div class="dashboard-title-block">
+                <span class="dashboard-title-icon dashboard-title-icon--blue">
+                  <i class="mdi mdi-chart-line"></i>
+                </span>
+                <div>
+                  <p class="card-title mb-0">7-Day Throughput</p>
+                </div>
               </div>
-              <a href="{{ route('v2.reports.index', ['from' => $reportWindows['week']['from'], 'to' => $reportWindows['week']['to']]) }}" class="btn btn-outline-primary btn-sm">Weekly Report</a>
+              <a href="{{ route('v2.reports.index', ['from' => $reportWindows['week']['from'], 'to' => $reportWindows['week']['to']]) }}" class="btn btn-outline-primary btn-sm btn-icon-text">
+                <i class="mdi mdi-file-chart-outline"></i>
+                <span>Weekly Report</span>
+              </a>
             </div>
 
             <div class="dashboard-throughput-metrics">
@@ -165,11 +196,18 @@
         <div class="card dashboard-surface dashboard-surface--highlight">
           <div class="card-body">
             <div class="dashboard-card-head">
-              <div>
-                <p class="card-title mb-1">Today Summary</p>
-                <p class="card-description mb-0">Operational movement for the current day, with live completion and utilization signals.</p>
+              <div class="dashboard-title-block">
+                <span class="dashboard-title-icon dashboard-title-icon--teal">
+                  <i class="mdi mdi-calendar-check-outline"></i>
+                </span>
+                <div>
+                  <p class="card-title mb-0">Today Summary</p>
+                </div>
               </div>
-              <a href="{{ route('v2.reports.index', ['from' => $reportWindows['today']['from'], 'to' => $reportWindows['today']['to']]) }}" class="btn btn-light btn-sm">Today Report</a>
+              <a href="{{ route('v2.reports.index', ['from' => $reportWindows['today']['from'], 'to' => $reportWindows['today']['to']]) }}" class="btn btn-light btn-sm btn-icon-text">
+                <i class="mdi mdi-file-chart-outline"></i>
+                <span>Today Report</span>
+              </a>
             </div>
 
             <div class="dashboard-summary-panel-grid">
@@ -236,12 +274,19 @@
         <div class="card dashboard-surface">
           <div class="card-body">
             <div class="dashboard-card-head">
-              <div>
-                <p class="card-title mb-1">Insights</p>
-                <p class="card-description mb-0">Prioritized operating signals grouped by severity so urgent work stands out first.</p>
+              <div class="dashboard-title-block">
+                <span class="dashboard-title-icon dashboard-title-icon--amber">
+                  <i class="mdi mdi-lightbulb-on-outline"></i>
+                </span>
+                <div>
+                  <p class="card-title mb-0">Insights</p>
+                </div>
               </div>
               @if($canManageSystem)
-                <a href="{{ route('v2.logs.index') }}" class="btn btn-outline-primary btn-sm">System Logs</a>
+                <a href="{{ route('v2.logs.index') }}" class="btn btn-outline-primary btn-sm btn-icon-text">
+                  <i class="mdi mdi-alert-circle-outline"></i>
+                  <span>System Logs</span>
+                </a>
               @endif
             </div>
 
@@ -280,11 +325,18 @@
       <div class="card dashboard-surface">
         <div class="card-body">
           <div class="dashboard-card-head">
-            <div>
-              <p class="card-title mb-1">Action Queue</p>
-              <p class="card-description mb-0">Switch between delayed, pending, and missing-location queues without reloading the whole dashboard.</p>
+            <div class="dashboard-title-block">
+              <span class="dashboard-title-icon dashboard-title-icon--slate">
+                <i class="mdi mdi-clipboard-list-outline"></i>
+              </span>
+              <div>
+                <p class="card-title mb-0">Action Queue</p>
+              </div>
             </div>
-            <a href="{{ route('v2.reports.index') }}" class="btn btn-outline-primary btn-sm">All Reports</a>
+            <a href="{{ route('v2.reports.index') }}" class="btn btn-outline-primary btn-sm btn-icon-text">
+              <i class="mdi mdi-file-chart-outline"></i>
+              <span>All Reports</span>
+            </a>
           </div>
 
           <div class="dashboard-tabs-toolbar">
@@ -299,7 +351,6 @@
                 >
                   <span class="dashboard-tab__label">{{ $tab['label'] }}</span>
                   <strong class="dashboard-tab__count">{{ $tab['count'] }}</strong>
-                  <small class="dashboard-tab__meta">{{ $tab['description'] }}</small>
                 </button>
               @endforeach
             </div>
@@ -338,11 +389,18 @@
       <div class="card dashboard-surface">
         <div class="card-body">
           <div class="dashboard-card-head">
-            <div>
-              <p class="card-title mb-1">Recent Tracking Activity</p>
-              <p class="card-description mb-0">Most recently updated LR records across the project.</p>
+            <div class="dashboard-title-block">
+              <span class="dashboard-title-icon dashboard-title-icon--blue">
+                <i class="mdi mdi-radar"></i>
+              </span>
+              <div>
+                <p class="card-title mb-0">Recent Tracking Activity</p>
+              </div>
             </div>
-            <a href="{{ route('v2.lr-trackings.index') }}" class="btn btn-outline-primary btn-sm">View All</a>
+            <a href="{{ route('v2.lr-trackings.index') }}" class="btn btn-outline-primary btn-sm btn-icon-text">
+              <i class="mdi mdi-arrow-right"></i>
+              <span>View All</span>
+            </a>
           </div>
 
           <div class="table-responsive">
@@ -395,11 +453,18 @@
         <div class="card dashboard-surface">
           <div class="card-body">
             <div class="dashboard-card-head">
-              <div>
-                <p class="card-title mb-1">Recent Alerts</p>
-                <p class="card-description mb-0">Latest warnings and failures from the operational log stream.</p>
+              <div class="dashboard-title-block">
+                <span class="dashboard-title-icon dashboard-title-icon--red">
+                  <i class="mdi mdi-bell-alert-outline"></i>
+                </span>
+                <div>
+                  <p class="card-title mb-0">Recent Alerts</p>
+                </div>
               </div>
-              <a href="{{ route('v2.logs.index') }}" class="btn btn-outline-primary btn-sm">Open Logs</a>
+              <a href="{{ route('v2.logs.index') }}" class="btn btn-outline-primary btn-sm btn-icon-text">
+                <i class="mdi mdi-open-in-new"></i>
+                <span>Open Logs</span>
+              </a>
             </div>
 
             <div class="dashboard-alert-list">

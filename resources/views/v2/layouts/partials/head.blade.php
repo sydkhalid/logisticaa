@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="{{ \App\Support\V2Routing::asset('assets/vendors/mdi/css/materialdesignicons.min.css') }}">
   <link rel="stylesheet" href="{{ \App\Support\V2Routing::publicAsset('plugins/datatables-bs4/css/dataTables.bootstrap4.min.css') }}">
   <link rel="stylesheet" href="{{ \App\Support\V2Routing::publicAsset('plugins/datatables-responsive/css/responsive.bootstrap4.min.css') }}">
+  <link rel="stylesheet" href="{{ \App\Support\V2Routing::publicAsset('plugins/datatables-buttons/css/buttons.bootstrap4.min.css') }}">
   <link rel="stylesheet" href="{{ \App\Support\V2Routing::asset('assets/vendors/select2/select2.min.css') }}">
   <link rel="stylesheet" href="{{ \App\Support\V2Routing::asset('assets/vendors/select2-bootstrap-theme/select2-bootstrap.min.css') }}">
   <link rel="stylesheet" href="{{ \App\Support\V2Routing::asset('assets/vendors/sweetalert2/sweetalert2.min.css') }}">
