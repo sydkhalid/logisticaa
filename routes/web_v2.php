@@ -5,6 +5,7 @@ use App\Http\Controllers\V2\DashboardController;
 use App\Http\Controllers\V2\EpodController;
 use App\Http\Controllers\V2\IntegrationController;
 use App\Http\Controllers\V2\LrTrackingController;
+use App\Http\Controllers\V2\MaintenanceController;
 use App\Http\Controllers\V2\MarketVehicleController;
 use App\Http\Controllers\V2\RedirectController;
 use App\Http\Controllers\V2\ReportController;
@@ -38,6 +39,7 @@ $router->prefix(V2Routing::routePrefix())->name('v2.')->group(function () use ($
             $router->post('/integrations/travis/refresh-token', [IntegrationController::class, 'refreshTravisToken'])->name('integrations.travis.refresh-token');
             $router->get('/settings', [SettingController::class, 'edit'])->name('settings.edit');
             $router->post('/settings', [SettingController::class, 'update'])->name('settings.update');
+            $router->get('/optimize-clear', [MaintenanceController::class, 'optimizeClear'])->name('optimize-clear');
         });
 
         $router->prefix('logs')->name('logs.')->middleware('admin')->group(function () use ($router) {

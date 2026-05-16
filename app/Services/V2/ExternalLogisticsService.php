@@ -1308,7 +1308,11 @@ class ExternalLogisticsService
         }
 
         if (!is_file($caBundle)) {
-            throw new RuntimeException('Configured Travis CA bundle was not found.');
+            Log::warning('Configured Travis CA bundle was not found; falling back to the system CA store.', [
+                'ca_bundle' => $caBundle,
+            ]);
+
+            return true;
         }
 
         return $caBundle;
