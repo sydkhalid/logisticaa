@@ -251,7 +251,7 @@ body.v2-loading {
 .sidebar .nav:not(.sub-menu) > .nav-item > .nav-link:hover,
 .sidebar .nav:not(.sub-menu) > .nav-item > .nav-link:focus-visible {
   background: rgba(15, 118, 110, 0.08);
-  color: var(--v2-accent-strong);
+  color: #1f2937;
   box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.08);
 }
 
@@ -265,6 +265,11 @@ body.v2-loading {
 .sidebar .nav:not(.sub-menu) > .nav-item > .nav-link.active .menu-title,
 .sidebar .nav:not(.sub-menu) > .nav-item > .nav-link[aria-expanded="true"] .menu-title {
   color: #fff;
+}
+
+.sidebar .nav:not(.sub-menu) > .nav-item > .nav-link:hover .menu-title,
+.sidebar .nav:not(.sub-menu) > .nav-item > .nav-link:focus-visible .menu-title {
+  color: #1f2937;
 }
 
 .sidebar .nav:not(.sub-menu) > .nav-item > .nav-link:hover i.menu-icon,
@@ -306,7 +311,7 @@ body.v2-loading {
 
 .sidebar .nav.sub-menu .nav-item .nav-link:hover {
   background: rgba(15, 118, 110, 0.08);
-  color: var(--v2-accent-strong);
+  color: #1f2937;
 }
 
 .sidebar .nav.sub-menu .nav-item .nav-link.active {
@@ -1226,18 +1231,18 @@ body.v2-loading {
   }
 
   .sidebar-icon-only .sidebar .nav .nav-item .nav-link .menu-title {
-    background: linear-gradient(135deg, #0f766e, #0f5d78);
+    background: rgba(255, 255, 255, 0.98);
     border-radius: 0 0.9rem 0.9rem 0;
-    color: #fff;
+    color: #1f2937;
     left: 72px;
     min-height: 3rem;
   }
 
   .sidebar-icon-only .sidebar .nav .nav-item.hover-open .nav-link .menu-title,
   .sidebar-icon-only .sidebar .nav .nav-item.hover-open .nav-link:hover .menu-title {
-    background: linear-gradient(135deg, #0f766e, #0f5d78);
-    box-shadow: 10px 16px 28px rgba(15, 118, 110, 0.16);
-    color: #fff;
+    background: rgba(255, 255, 255, 0.98);
+    box-shadow: 10px 16px 28px rgba(15, 23, 42, 0.12);
+    color: #1f2937;
   }
 
   .sidebar-icon-only .sidebar .nav .nav-item.hover-open .collapse,
