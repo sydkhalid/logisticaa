@@ -11,6 +11,7 @@ use App\Http\Controllers\VehicleotherController;
 use App\Http\Controllers\WeightController;
 use App\Http\Controllers\LegacyRedirectController;
 use App\Http\Controllers\V2\AuthController as V2AuthController;
+use App\Support\V2Routing;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,6 +23,12 @@ use App\Http\Controllers\V2\AuthController as V2AuthController;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+if (V2Routing::usesBasePath()) {
+    require base_path('routes/web_v2.php');
+
+    return;
+}
 
 Route::get('/', [LegacyRedirectController::class, 'index'])->name('index');
 Route::get('/login', [LegacyRedirectController::class, 'index'])->name('login');

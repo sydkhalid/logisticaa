@@ -12,10 +12,11 @@ use App\Http\Controllers\V2\SettingController;
 use App\Http\Controllers\V2\SystemLogController;
 use App\Http\Controllers\V2\VehicleController;
 use App\Http\Controllers\V2\WeightCorrectionController;
+use App\Support\V2Routing;
 
 /** @var \Illuminate\Routing\Router $router */
 
-$router->prefix('v2')->name('v2.')->group(function () use ($router) {
+$router->prefix(V2Routing::routePrefix())->name('v2.')->group(function () use ($router) {
     $router->get('/', [RedirectController::class, 'index'])->name('index');
 
     $router->middleware('guest')->group(function () use ($router) {

@@ -29,12 +29,12 @@
     </div>
   </div>
 
-  <script src="{{ asset('v2/assets/vendors/js/vendor.bundle.base.js') }}"></script>
-  <script src="{{ asset('v2/assets/vendors/sweetalert2/sweetalert2.min.js') }}"></script>
-  <script src="{{ asset('v2/assets/js/off-canvas.js') }}"></script>
-  <script src="{{ asset('v2/assets/js/template.js') }}"></script>
-  <script src="{{ asset('v2/assets/js/settings.js') }}"></script>
-  <script src="{{ asset('v2/assets/js/v2.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::asset('assets/vendors/js/vendor.bundle.base.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::asset('assets/vendors/sweetalert2/sweetalert2.min.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::asset('assets/js/off-canvas.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::asset('assets/js/template.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::asset('assets/js/settings.js') }}"></script>
+  <script src="{{ \App\Support\V2Routing::asset('assets/js/v2.js') }}"></script>
   @yield('scripts')
 </body>
 </html>
