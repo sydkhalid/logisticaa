@@ -345,9 +345,106 @@
     });
   }
 
+  function tableExportTitle(selector) {
+    var tableNode = document.querySelector(selector);
+    var card = tableNode ? tableNode.closest('.card') : null;
+    var titleNode = card ? card.querySelector('.card-title') : null;
+
+    return titleNode && titleNode.textContent.trim()
+      ? titleNode.textContent.trim()
+      : document.title.replace(/\s+\|.*$/, '').trim() || 'logisticaa-export';
+  }
+
+  function tableExportFilename(title) {
+    return String(title || 'logisticaa-export')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'logisticaa-export';
+  }
+
+  function exportableColumn(index, data, node) {
+    return String(window.jQuery(node).text() || '').trim().toLowerCase() !== 'actions';
+  }
+
+  function dataTableButtons(selector) {
+    var title = tableExportTitle(selector);
+    var filename = tableExportFilename(title);
+    var exportOptions = {
+      columns: exportableColumn,
+      modifier: {
+        search: 'applied',
+        order: 'applied'
+      }
+    };
+
+    return [
+      {
+        text: '<i class=\"ti-reload\" aria-hidden=\"true\"></i><span>Refresh</span>',
+        className: 'v2-dt-button v2-dt-button--refresh',
+        action: function (event, dt) {
+          if (dt.ajax && typeof dt.ajax.reload === 'function') {
+            dt.ajax.reload(null, false);
+            return;
+          }
+
+          dt.draw(false);
+        }
+      },
+      {
+        extend: 'excelHtml5',
+        text: '<i class=\"ti-file\" aria-hidden=\"true\"></i><span>Excel</span>',
+        className: 'v2-dt-button v2-dt-button--excel',
+        title: title,
+        filename: filename,
+        exportOptions: exportOptions
+      },
+      {
+        extend: 'pdfHtml5',
+        text: '<i class=\"ti-files\" aria-hidden=\"true\"></i><span>PDF</span>',
+        className: 'v2-dt-button v2-dt-button--pdf',
+        title: title,
+        filename: filename,
+        orientation: 'landscape',
+        pageSize: 'A4',
+        exportOptions: exportOptions
+      },
+      {
+        extend: 'csvHtml5',
+        text: '<i class=\"ti-download\" aria-hidden=\"true\"></i><span>Download</span>',
+        className: 'v2-dt-button v2-dt-button--download',
+        title: title,
+        filename: filename,
+        exportOptions: exportOptions
+      }
+    ];
+  }
+
+  function applyTableAlignmentClasses(selector) {
+    var tableNode = document.querySelector(selector);
+    var headers = tableNode ? tableNode.querySelectorAll('thead th') : [];
+    var firstHeader;
+    var lastHeader;
+
+    if (!tableNode || !headers.length) {
+      return;
+    }
+
+    firstHeader = String(headers[0].textContent || '').trim();
+    lastHeader = String(headers[headers.length - 1].textContent || '').trim().toLowerCase();
+
+    if (firstHeader === '#') {
+      tableNode.classList.add('v2-table--indexed');
+    }
+
+    if (lastHeader === 'actions' || lastHeader === 'action') {
+      tableNode.classList.add('v2-table--actions');
+    }
+  }
+
   function initDataTable(selector, options) {
     var table;
     var settings;
+    var hasButtons;
 
     if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.DataTable) {
       return null;
@@ -361,23 +458,38 @@
       return window.jQuery(selector).DataTable();
     }
 
+    applyTableAlignmentClasses(selector);
+
+    hasButtons = window.jQuery.fn.dataTable && window.jQuery.fn.dataTable.Buttons;
+
     settings = window.jQuery.extend(true, {
       autoWidth: false,
       responsive: true,
       deferRender: true,
       processing: false,
-      pageLength: 25,
+      pageLength: 10,
       searchDelay: 450,
-      lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+      lengthMenu: [[10, 25, 50, 100, -1], ['10 rows', '25 rows', '50 rows', '100 rows', 'Show all']],
       order: [[0, 'desc']],
-      dom: "<'row align-items-center mb-3'<'col-md-5'l><'col-md-7'f>>" +
-        "<'row'<'col-12'tr>>" +
-        "<'row align-items-center mt-3'<'col-md-5'i><'col-md-7'p>>",
+      dom: (hasButtons
+        ? "<'v2-dt-shell'<'v2-dt-toolbar'<'v2-dt-left'<'v2-dt-length'l><'v2-dt-buttons'B>><'v2-dt-search'f>>"
+        : "<'v2-dt-shell'<'v2-dt-toolbar'<'v2-dt-length'l><'v2-dt-search'f>>") +
+        "<'v2-dt-table'tr>" +
+        "<'v2-dt-footer'<'v2-dt-info'i><'v2-dt-pager'p>>>",
+      buttons: hasButtons ? dataTableButtons(selector) : [],
       language: {
         search: '',
         searchPlaceholder: 'Search records',
+        lengthMenu: '_MENU_',
+        info: 'Showing _START_ to _END_ of _TOTAL_ records',
+        infoEmpty: 'No records to show',
         processing: '<div class=\"v2-table-processing\"><span></span><strong>Loading records...</strong></div>',
-        emptyTable: 'No records found'
+        emptyTable: 'No records found',
+        zeroRecords: 'No matching records found',
+        paginate: {
+          previous: '<i class=\"ti-angle-left\" aria-hidden=\"true\"></i>',
+          next: '<i class=\"ti-angle-right\" aria-hidden=\"true\"></i>'
+        }
       },
       columnDefs: [
         {
@@ -388,6 +500,11 @@
     }, options || {});
 
     table = window.jQuery(selector).DataTable(settings);
+
+    var tableContainer = window.jQuery(table.table().container());
+    tableContainer.addClass('v2-dt-theme');
+    tableContainer.closest('.table-responsive').addClass('v2-table-frame');
+    tableContainer.closest('.card').addClass('v2-table-card');
 
     window.jQuery(selector).on('processing.dt', function (event, dtSettings, processing) {
       if (processing) {
