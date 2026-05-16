@@ -89,13 +89,34 @@ class EpodController extends BaseController
     public function show(Epod $epod)
     {
         $tracking = $this->resolveTracking($epod);
+        $path = $this->epodPath($epod);
+        $mimeType = $path ? (mime_content_type($path) ?: 'application/octet-stream') : null;
 
         return $this->render('epods.show', [
             'pageTitle' => 'EPOD Details',
             'epod' => $epod,
             'tracking' => $tracking,
-            'fileExists' => $this->epodPath($epod) !== null,
+            'fileExists' => $path !== null,
+            'isImageFile' => $mimeType ? Str::startsWith($mimeType, 'image/') : false,
+            'isPdfFile' => $mimeType === 'application/pdf',
+            'previewMime' => $mimeType,
             'canManageEpods' => $this->canManageEpods(request()),
+        ]);
+    }
+
+    public function preview(Epod $epod)
+    {
+        $path = $this->epodPath($epod);
+        abort_unless($path, 404, 'EPOD file was not found.');
+
+        $mimeType = mime_content_type($path) ?: 'application/octet-stream';
+        abort_unless(Str::startsWith($mimeType, 'image/') || $mimeType === 'application/pdf', 415, 'EPOD file cannot be previewed.');
+
+        $filename = preg_replace('/[^A-Za-z0-9._-]/', '-', basename((string) $epod->epod)) ?: 'epod';
+
+        return response()->file($path, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
         ]);
     }
 

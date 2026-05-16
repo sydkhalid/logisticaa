@@ -41,6 +41,7 @@ class MarketVehicleController extends BaseController
                 $statusBadge = '<span class="badge badge-' . ((int) $vehicle->statusStop === 1 ? 'danger' : 'success') . '">'
                     . ((int) $vehicle->statusStop === 1 ? 'Stopped' : 'Active')
                     . '</span>';
+                $canManage = $this->canManageDestructiveActions(request());
 
                 $actions = [
                     $this->actionLink(route('v2.market-vehicles.show', $vehicle), 'View', 'btn-outline-info'),
@@ -48,7 +49,7 @@ class MarketVehicleController extends BaseController
                     $this->actionForm(route('v2.market-vehicles.status', $vehicle), 'Check', 'btn-outline-success'),
                 ];
 
-                if ($this->canManageDestructiveActions(request())) {
+                if ($canManage && (int) $vehicle->statusStop !== 1) {
                     $actions[] = $this->actionForm(
                         route('v2.market-vehicles.stop-tracking', $vehicle),
                         'Stop',
@@ -56,6 +57,9 @@ class MarketVehicleController extends BaseController
                         'POST',
                         'Stop SIM tracking for this vehicle?'
                     );
+                }
+
+                if ($canManage) {
                     $actions[] = $this->actionForm(
                         route('v2.market-vehicles.destroy', $vehicle),
                         'Delete',

@@ -127,7 +127,10 @@ abstract class BaseController extends Controller
 
     protected function actionLink(string $url, string $label, string $class): string
     {
-        return '<a href="' . e($url) . '" class="btn ' . e($class) . ' btn-sm">' . e($label) . '</a>';
+        return '<a href="' . e($url) . '" class="btn ' . e($class) . ' btn-sm v2-action-button" title="' . e($label) . '" aria-label="' . e($label) . '">'
+            . $this->actionIcon($label)
+            . '<span>' . e($label) . '</span>'
+            . '</a>';
     }
 
     protected function actionForm(
@@ -146,13 +149,46 @@ abstract class BaseController extends Controller
         return '<form class="d-inline-block" method="POST" action="' . e($action) . '"' . $confirmAttributes . '>'
             . csrf_field()
             . ($method !== 'POST' ? method_field($method) : '')
-            . '<button type="submit" class="btn ' . e($class) . ' btn-sm">' . e($label) . '</button>'
+            . '<button type="submit" class="btn ' . e($class) . ' btn-sm v2-action-button" title="' . e($label) . '" aria-label="' . e($label) . '">'
+            . $this->actionIcon($label)
+            . '<span>' . e($label) . '</span>'
+            . '</button>'
             . '</form>';
     }
 
     protected function actionGroup(array $actions): string
     {
-        return '<div class="v2-action-cluster justify-content-end">' . implode('', $actions) . '</div>';
+        $actions = array_values(array_filter($actions));
+
+        if (empty($actions)) {
+            return '<span class="text-muted">-</span>';
+        }
+
+        $count = min(count($actions), 5);
+
+        return '<div class="v2-action-cluster v2-action-cluster--count-' . $count . ' justify-content-end" role="group" aria-label="Row actions">'
+            . implode('', $actions)
+            . '</div>';
+    }
+
+    protected function actionIcon(string $label): string
+    {
+        $icons = [
+            'check' => 'mdi mdi-check-circle-outline',
+            'delete' => 'mdi mdi-delete-outline',
+            'download' => 'mdi mdi-download',
+            'edit' => 'mdi mdi-pencil-outline',
+            're-correct' => 'mdi mdi-pencil-outline',
+            'refresh' => 'mdi mdi-refresh',
+            'retry' => 'mdi mdi-refresh',
+            'start' => 'mdi mdi-play-circle-outline',
+            'stop' => 'mdi mdi-stop-circle-outline',
+            'view' => 'mdi mdi-eye-outline',
+        ];
+
+        $icon = $icons[strtolower($label)] ?? 'mdi mdi-arrow-right';
+
+        return '<i class="' . e($icon) . '" aria-hidden="true"></i>';
     }
 
     protected function logHandledException(
