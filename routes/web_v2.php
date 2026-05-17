@@ -104,6 +104,7 @@ $router->prefix(V2Routing::routePrefix())->name('v2.')->group(function () use ($
             $router->get('/data', [EpodController::class, 'data'])->name('data');
             $router->get('/create', [EpodController::class, 'create'])->name('create');
             $router->post('/', [EpodController::class, 'store'])->name('store');
+            $router->get('/{epod}/preview', [EpodController::class, 'preview'])->name('preview');
             $router->get('/{epod}', [EpodController::class, 'show'])->name('show');
             $router->get('/{epod}/download', [EpodController::class, 'download'])->name('download');
             $router->post('/{epod}/retry', [EpodController::class, 'retry'])->name('retry');

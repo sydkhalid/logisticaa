@@ -364,6 +364,47 @@ class V2ApplicationFlowTest extends TestCase
         Queue::assertPushed(StopMarketVehicleTrackingJob::class);
     }
 
+    public function test_market_vehicle_data_actions_follow_status_and_permissions()
+    {
+        $admin = $this->adminUser();
+        $user = $this->user();
+        $activeVehicle = $this->marketVehicle([
+            'vehicleNo' => 'KA01ACTION01',
+            'statusStop' => 0,
+        ]);
+        $stoppedVehicle = $this->marketVehicle([
+            'vehicleNo' => 'KA01ACTION02',
+            'statusStop' => 1,
+        ]);
+
+        $adminRows = collect($this->actingAs($admin)
+            ->getJson(route('v2.market-vehicles.data'))
+            ->assertOk()
+            ->json('data'));
+        $activeActions = $adminRows->firstWhere('vehicleNo', $activeVehicle->vehicleNo)['actions'] ?? '';
+        $stoppedActions = $adminRows->firstWhere('vehicleNo', $stoppedVehicle->vehicleNo)['actions'] ?? '';
+
+        $this->assertStringContainsString('View', $activeActions);
+        $this->assertStringContainsString('Edit', $activeActions);
+        $this->assertStringContainsString('Check', $activeActions);
+        $this->assertStringContainsString('Stop', $activeActions);
+        $this->assertStringContainsString('Delete', $activeActions);
+        $this->assertStringNotContainsString('Stop', $stoppedActions);
+        $this->assertStringContainsString('Delete', $stoppedActions);
+
+        $userRows = collect($this->actingAs($user)
+            ->getJson(route('v2.market-vehicles.data'))
+            ->assertOk()
+            ->json('data'));
+        $userActions = $userRows->firstWhere('vehicleNo', $activeVehicle->vehicleNo)['actions'] ?? '';
+
+        $this->assertStringContainsString('View', $userActions);
+        $this->assertStringContainsString('Edit', $userActions);
+        $this->assertStringContainsString('Check', $userActions);
+        $this->assertStringNotContainsString('Stop', $userActions);
+        $this->assertStringNotContainsString('Delete', $userActions);
+    }
+
     public function test_market_vehicle_update_queues_new_registration_and_old_sim_stop()
     {
         Queue::fake();
