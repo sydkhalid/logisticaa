@@ -1,5 +1,6 @@
 @php
   $breadcrumbs = $breadcrumbs ?? [];
+  $hasBreadcrumbs = !empty($breadcrumbs);
   $pageIcon = $pageIcon ?? 'mdi-view-dashboard-outline';
   $pageIconMap = [
     'v2.home' => 'mdi-view-dashboard-outline',
@@ -21,10 +22,10 @@
     }
   }
 @endphp
-<div class="row">
+<div class="row {{ request()->routeIs('v2.home', 'v2.home.attention') ? 'v2-page-header--dashboard' : '' }}">
   <div class="col-md-12 grid-margin">
     <div class="row align-items-center">
-      <div class="col-12 col-lg-8">
+      <div class="col-12 {{ $hasBreadcrumbs ? 'col-lg-8' : 'col-lg-12' }}">
         <div class="v2-page-heading">
           <span class="v2-page-heading__icon">
             <i class="mdi {{ $pageIcon }}"></i>
@@ -37,8 +38,8 @@
           </div>
         </div>
       </div>
-      <div class="col-12 col-lg-4 mt-3 mt-lg-0">
-        @if (!empty($breadcrumbs))
+      @if ($hasBreadcrumbs)
+        <div class="col-12 col-lg-4 mt-3 mt-lg-0">
           <nav aria-label="breadcrumb">
             <ol class="breadcrumb breadcrumb-custom justify-content-start justify-content-lg-end mb-0">
               <li class="breadcrumb-item"><a href="{{ route('v2.home') }}">Home</a></li>
@@ -53,8 +54,8 @@
               @endforeach
             </ol>
           </nav>
-        @endif
-      </div>
+        </div>
+      @endif
     </div>
   </div>
 </div>

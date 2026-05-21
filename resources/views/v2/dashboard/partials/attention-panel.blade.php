@@ -53,11 +53,11 @@
       <tbody>
         @forelse ($records as $record)
           <tr>
-            <td>
+            <td data-label="LR / Vehicle">
               <div class="dashboard-data-table__primary">{{ $record->lrNumber ?: '-' }}</div>
               <div class="dashboard-data-table__secondary">{{ $record->vehicleNo ?: '-' }}</div>
             </td>
-            <td>
+            <td data-label="{{ $secondaryHeading }}">
               @if ($panel === 'location-gaps')
                 <span class="dashboard-data-table__secondary">
                   {{ $record->location ?: 'Latitude / longitude not resolved' }}
@@ -72,7 +72,7 @@
                 </span>
               @endif
             </td>
-            <td>
+            <td data-label="{{ $timeHeading }}">
               @if ($panel === 'delayed')
                 {{ $formatDate($record->edd) }}
               @elseif ($panel === 'pending-epod')
@@ -81,7 +81,7 @@
                 {{ $formatDate($record->updated_at) }}
               @endif
             </td>
-            <td class="text-right">
+            <td class="text-right" data-label="Action">
               <a href="{{ route('v2.lr-trackings.show', $record) }}" class="btn btn-light btn-sm btn-icon-text">
                 <i class="mdi mdi-eye-outline"></i>
                 <span>View</span>

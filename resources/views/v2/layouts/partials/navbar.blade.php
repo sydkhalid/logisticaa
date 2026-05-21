@@ -11,6 +11,9 @@
       <span class="brand-mini-mark" aria-hidden="true"></span>
       <span class="brand-copy brand-copy--mobile">{{ $appName }}</span>
     </a>
+    <button class="navbar-toggler navbar-toggler-mobile-inline d-lg-none align-self-center" type="button" data-toggle="offcanvas" aria-label="Open menu">
+      <span class="icon-menu"></span>
+    </button>
   </div>
   <div class="navbar-menu-wrapper d-flex align-items-center justify-content-between">
     <div class="v2-navbar-start">
@@ -40,8 +43,5 @@
         </div>
       </li>
     </ul>
-    <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button" data-toggle="offcanvas" aria-label="Open menu">
-      <span class="icon-menu"></span>
-    </button>
   </div>
 </nav>

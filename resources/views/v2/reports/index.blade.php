@@ -58,7 +58,7 @@
             </div>
           </div>
 
-          <form method="GET" action="{{ route('v2.reports.index') }}" class="row">
+          <form method="GET" action="{{ route('v2.reports.index') }}" class="row g-3 v2-filter-form">
             <div class="col-md-4 form-group">
               <label for="from">From</label>
               <input type="date" class="form-control" id="from" name="from" value="{{ $filters['from'] }}">

@@ -417,12 +417,12 @@
               <tbody>
                 @forelse ($recentTrackings as $tracking)
                   <tr>
-                    <td>
+                    <td data-label="Vehicle">
                       <div class="dashboard-data-table__primary">{{ $tracking->vehicleNo ?: '-' }}</div>
                       <div class="dashboard-data-table__secondary">{{ $tracking->lspId ?: '-' }}</div>
                     </td>
-                    <td>{{ $tracking->lrNumber ?: '-' }}</td>
-                    <td>
+                    <td data-label="LR Number">{{ $tracking->lrNumber ?: '-' }}</td>
+                    <td data-label="Stage">
                       @if ((int) $tracking->status === 3)
                         <span class="dashboard-status-badge dashboard-status-badge--success">EPOD Uploaded</span>
                       @elseif ((int) $tracking->status === 1)
@@ -431,8 +431,8 @@
                         <span class="dashboard-status-badge dashboard-status-badge--warning">{{ $tracking->lrStatus ?: 'Active' }}</span>
                       @endif
                     </td>
-                    <td>{{ $tracking->location ?: 'Awaiting location' }}</td>
-                    <td>{{ $formatDate($tracking->updated_at) }}</td>
+                    <td data-label="Location">{{ $tracking->location ?: 'Awaiting location' }}</td>
+                    <td data-label="Updated">{{ $formatDate($tracking->updated_at) }}</td>
                   </tr>
                 @empty
                   <tr>
