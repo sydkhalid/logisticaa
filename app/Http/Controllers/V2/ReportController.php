@@ -109,9 +109,9 @@ class ReportController extends BaseController
                 'fleetAnalytics' => $this->integrations->cachedFleetAnalytics(),
             ],
             'trackingStatusBreakdown' => $trackingStatusBreakdown,
-            'recentTrackings' => (clone $trackingsQuery)->latest('id')->limit(10)->get(),
-            'recentWeights' => $weightsQuery ? (clone $weightsQuery)->latest('id')->limit(10)->get() : collect(),
-            'recentEpods' => (clone $epodsQuery)->latest('id')->limit(10)->get(),
+            'recentTrackings' => (clone $trackingsQuery)->latest('created_at')->limit(10)->get(),
+            'recentWeights' => $weightsQuery ? (clone $weightsQuery)->latest('created_at')->limit(10)->get() : collect(),
+            'recentEpods' => (clone $epodsQuery)->latest('created_at')->limit(10)->get(),
             'weightsEnabled' => $weightsEnabled,
         ];
     }
@@ -119,7 +119,7 @@ class ReportController extends BaseController
     private function exportPayload(string $dataset, Carbon $start, Carbon $end, string $dateSuffix): array
     {
         if ($dataset === 'trackings') {
-            $rows = $this->applyRange(Tracking::query()->latest('id'), $start, $end)->get();
+            $rows = $this->applyRange(Tracking::query()->latest('created_at'), $start, $end)->get();
 
             return [
                 'title' => 'LR Trackings',
@@ -148,7 +148,7 @@ class ReportController extends BaseController
         }
 
         if ($dataset === 'epods') {
-            $rows = $this->applyRange(Epod::query()->where('status', 1)->latest('id'), $start, $end)->get();
+            $rows = $this->applyRange(Epod::query()->where('status', 1)->latest('created_at'), $start, $end)->get();
 
             return [
                 'title' => 'EPOD Uploads',
@@ -168,7 +168,7 @@ class ReportController extends BaseController
         }
 
         if ($dataset === 'vehicles') {
-            $rows = $this->applyRange(Vehicle::query()->latest('id'), $start, $end)->get();
+            $rows = $this->applyRange(Vehicle::query()->latest('created_at'), $start, $end)->get();
 
             return [
                 'title' => 'Vehicles',
@@ -192,7 +192,7 @@ class ReportController extends BaseController
         if ($dataset === 'weights') {
             abort_unless(Schema::hasTable('weights'), 404);
 
-            $rows = $this->applyRange(Weight::query()->latest('id'), $start, $end)->get();
+            $rows = $this->applyRange(Weight::query()->latest('created_at'), $start, $end)->get();
 
             return [
                 'title' => 'Weight Corrections',

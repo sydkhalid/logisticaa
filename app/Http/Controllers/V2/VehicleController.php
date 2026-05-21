@@ -28,13 +28,13 @@ class VehicleController extends BaseController
         $query = Vehicle::query()
             ->select(['id', 'vehicleNo', 'created_at'])
             ->where('vehicleStatus', 0)
-            ->latest('id');
+            ->latest('created_at');
 
         return $this->datatableResponse(
             $request,
             $query,
             ['vehicleNo'],
-            ['id', 'vehicleNo', 'created_at', null],
+            ['created_at', 'vehicleNo', 'created_at', null],
             function (Vehicle $vehicle, int $index) {
                 $actions = [
                     $this->actionLink(route('v2.vehicles.show', $vehicle), 'View', 'btn-outline-info'),

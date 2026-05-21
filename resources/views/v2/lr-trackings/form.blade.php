@@ -26,7 +26,7 @@
             <div class="row">
               <div class="col-md-4 form-group">
                 <label for="vehicle_id">Vehicle Number</label>
-                <select class="form-select" id="vehicle_id" name="vehicle_id" required>
+                <select class="form-select" id="vehicle_id" name="vehicle_id" data-placeholder="Choose a vehicle" required>
                   <option value="">Choose a vehicle</option>
                   @foreach ($vehicles as $vehicle)
                     <option value="{{ $vehicle->id }}" {{ old('vehicle_id') == $vehicle->id ? 'selected' : '' }}>
@@ -46,7 +46,7 @@
               </div>
               <div class="col-md-4 form-group">
                 <label for="lrStatus">LR Status</label>
-                <select class="form-select" id="lrStatus" name="lrStatus" required>
+                <select class="form-select" id="lrStatus" name="lrStatus" data-placeholder="Please choose" required>
                   <option value="">Please choose</option>
                   @foreach ($lrStatuses as $status)
                     <option value="{{ $status }}" {{ old('lrStatus') === $status ? 'selected' : '' }}>{{ $status }}</option>
@@ -95,7 +95,7 @@
               </div>
               <div class="col-md-4 form-group">
                 <label for="truckType">Truck Type</label>
-                <select class="form-select" id="truckType" name="truckType" required>
+                <select class="form-select" id="truckType" name="truckType" data-placeholder="Please choose" required>
                   <option value="">Please choose</option>
                   @foreach ($truckTypes as $type)
                     <option value="{{ $type }}" {{ old('truckType') === $type ? 'selected' : '' }}>{{ $type }}</option>
@@ -104,7 +104,7 @@
               </div>
               <div class="col-md-4 form-group">
                 <label for="truckTonnage">Truck Tonnage</label>
-                <select class="form-select" id="truckTonnage" name="truckTonnage" required>
+                <select class="form-select" id="truckTonnage" name="truckTonnage" data-placeholder="Please choose" required>
                   <option value="">Please choose</option>
                   @foreach ($truckTonnages as $tonnage)
                     <option value="{{ $tonnage }}" {{ old('truckTonnage') === $tonnage ? 'selected' : '' }}>{{ $tonnage }}</option>

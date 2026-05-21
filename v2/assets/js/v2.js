@@ -345,6 +345,56 @@
     });
   }
 
+  function initSelect2(root) {
+    var $;
+    var selector = 'select.form-select, select.form-control, select[data-v2-select2="1"]';
+    var $scope;
+    var $selects;
+
+    if (!window.jQuery || !window.jQuery.fn || !window.jQuery.fn.select2) {
+      return;
+    }
+
+    $ = window.jQuery;
+    $scope = root ? $(root) : $(document);
+    $selects = $scope.find(selector);
+
+    if ($scope.is(selector)) {
+      $selects = $selects.add($scope);
+    }
+
+    $selects
+      .not('[data-no-select2="1"], .select2-hidden-accessible')
+      .each(function () {
+        var $select = $(this);
+        var $blankOption = $select.find('option[value=""]').first();
+        var placeholder = $select.data('placeholder') || ($blankOption.length ? String($blankOption.text()).trim() : null);
+        var isTableLength = $select.closest('.dataTables_length').length > 0;
+        var options = {
+          theme: 'bootstrap',
+          width: isTableLength ? '8rem' : '100%'
+        };
+
+        if (placeholder) {
+          options.placeholder = placeholder;
+        }
+
+        if ($select.prop('multiple')) {
+          options.closeOnSelect = false;
+        }
+
+        if (!$select.prop('required') && $blankOption.length) {
+          options.allowClear = true;
+        }
+
+        if (isTableLength) {
+          options.minimumResultsForSearch = Infinity;
+        }
+
+        $select.select2(options);
+      });
+  }
+
   function tableExportTitle(selector) {
     var tableNode = document.querySelector(selector);
     var card = tableNode ? tableNode.closest('.card') : null;
@@ -505,6 +555,7 @@
     tableContainer.addClass('v2-dt-theme');
     tableContainer.closest('.table-responsive').addClass('v2-table-frame');
     tableContainer.closest('.card').addClass('v2-table-card');
+    initSelect2(tableContainer.get(0));
 
     window.jQuery(selector).on('processing.dt', function (event, dtSettings, processing) {
       if (processing) {
@@ -561,6 +612,7 @@
     initFetchLoader();
     initLinkLoader();
     initFormLoader();
+    initSelect2();
     readFlashMessages();
   });
 
@@ -570,6 +622,7 @@
     fireAlert: fireAlert,
     hideLoader: hideLoader,
     initDataTable: initDataTable,
+    initSelect2: initSelect2,
     resetLoaderState: resetLoaderState,
     showLoader: showLoader
   };

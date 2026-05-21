@@ -290,19 +290,19 @@ class LrTrackingController extends BaseController
     private function trackingData(Request $request, bool $completed)
     {
         $query = Tracking::query()
-            ->select(['id', 'vehicleNo', 'lspId', 'lrNumber', 'lrDate', 'lrStatus', 'status'])
+            ->select(['id', 'vehicleNo', 'lspId', 'lrNumber', 'lrDate', 'lrStatus', 'status', 'created_at'])
             ->when($completed, function ($builder) {
                 $builder->whereIn('status', [1, 3]);
             }, function ($builder) {
                 $builder->where('status', 0);
             })
-            ->latest('id');
+            ->latest('created_at');
 
         return $this->datatableResponse(
             $request,
             $query,
             ['vehicleNo', 'lspId', 'lrNumber', 'lrStatus', 'lrDate'],
-            ['id', 'vehicleNo', 'lspId', 'lrNumber', 'lrDate', 'status', null],
+            ['created_at', 'vehicleNo', 'lspId', 'lrNumber', 'lrDate', 'status', null],
             function (Tracking $tracking, int $index) use ($completed) {
                 $statusLabel = $completed && (int) $tracking->status === 3 ? 'EPOD Uploaded' : $tracking->lrStatus;
                 $statusBadge = '<span class="badge badge-' . (in_array((int) $tracking->status, [1, 3], true) ? 'success' : 'warning') . '">'

@@ -356,7 +356,7 @@
             </div>
 
             <div class="dashboard-tab-select-wrap">
-              <select id="dashboard-attention-select" class="form-control">
+              <select id="dashboard-attention-select" class="form-control" data-placeholder="Choose queue">
                 @foreach ($attentionTabs as $tab)
                   <option value="{{ $tab['key'] }}" data-url="{{ route('v2.home.attention', ['panel' => $tab['key']]) }}">
                     {{ $tab['label'] }} ({{ $tab['count'] }})

@@ -26,14 +26,14 @@ class WeightCorrectionController extends BaseController
     public function data(Request $request)
     {
         $query = Weight::query()
-            ->select(['id', 'lrNumber', 'correctedWeight', 'length', 'breadth', 'height'])
-            ->latest('id');
+            ->select(['id', 'lrNumber', 'correctedWeight', 'length', 'breadth', 'height', 'created_at'])
+            ->latest('created_at');
 
         return $this->datatableResponse(
             $request,
             $query,
             ['lrNumber', 'correctedWeight', 'length', 'breadth', 'height'],
-            ['id', 'lrNumber', 'correctedWeight', 'length', 'breadth', 'height', null],
+            ['created_at', 'lrNumber', 'correctedWeight', 'length', 'breadth', 'height', null],
             function (Weight $weight, int $index) {
                 return [
                     'index' => $index,
@@ -55,7 +55,7 @@ class WeightCorrectionController extends BaseController
         return $this->render('weight-corrections.form', [
             'pageTitle' => 'Add Weight Correction',
             'weight' => new Weight(),
-            'recentTrackings' => Tracking::query()->latest('id')->limit(20)->get(['lrNumber']),
+            'recentTrackings' => Tracking::query()->latest('created_at')->limit(20)->get(['lrNumber']),
             'defaultLspId' => $this->defaultLspId(),
             'formAction' => route('v2.weight-corrections.store'),
             'formMethod' => 'POST',
@@ -135,7 +135,7 @@ class WeightCorrectionController extends BaseController
         return $this->render('weight-corrections.form', [
             'pageTitle' => 'Re-Correct Weight',
             'weight' => $weight,
-            'recentTrackings' => Tracking::query()->latest('id')->limit(20)->get(['lrNumber']),
+            'recentTrackings' => Tracking::query()->latest('created_at')->limit(20)->get(['lrNumber']),
             'defaultLspId' => $this->defaultLspId(),
             'formAction' => route('v2.weight-corrections.update', $weight),
             'formMethod' => 'PUT',
@@ -235,7 +235,7 @@ class WeightCorrectionController extends BaseController
         return Tracking::query()
             ->where('lspId', $lspId)
             ->where('lrNumber', $lrNumber)
-            ->latest('id')
+            ->latest('created_at')
             ->first();
     }
 }

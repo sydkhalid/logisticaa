@@ -41,13 +41,13 @@ class SystemLogController extends BaseController
         $filters = $this->validatedFilters($request);
         $query = $this->filteredQuery($filters)
             ->select(['id', 'type', 'title', 'description', 'uri', 'ip', 'created_at', 'created_by'])
-            ->latest('id');
+            ->latest('created_at');
 
         return $this->datatableResponse(
             $request,
             $query,
             ['title', 'description', 'uri', 'ip', 'created_by'],
-            ['id', 'created_at', 'type', 'title', 'created_by', 'uri', null],
+            ['created_at', 'created_at', 'type', 'title', 'created_by', 'uri', null],
             function (ActivityLog $log, int $index) {
                 $badgeMap = [
                     'success' => 'success',
@@ -94,7 +94,7 @@ class SystemLogController extends BaseController
         $filename = 'system-logs-' . $filters['from'] . '_to_' . $filters['to'] . '.csv';
         $rows = $this->filteredQuery($filters)
             ->select(['id', 'type', 'title', 'description', 'uri', 'ip', 'is_api', 'request_info', 'created_at', 'created_by', 'user_id'])
-            ->latest('id');
+            ->latest('created_at');
 
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');

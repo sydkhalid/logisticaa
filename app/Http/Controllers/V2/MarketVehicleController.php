@@ -28,15 +28,15 @@ class MarketVehicleController extends BaseController
     public function data(Request $request)
     {
         $query = Vehicle::query()
-            ->select(['id', 'vehicleNo', 'mobileNo', 'simProvider', 'expireDate', 'statusStop'])
+            ->select(['id', 'vehicleNo', 'mobileNo', 'simProvider', 'expireDate', 'statusStop', 'created_at'])
             ->where('vehicleStatus', 1)
-            ->latest('id');
+            ->latest('created_at');
 
         return $this->datatableResponse(
             $request,
             $query,
             ['vehicleNo', 'mobileNo', 'simProvider'],
-            ['id', 'vehicleNo', 'mobileNo', 'simProvider', 'expireDate', 'statusStop', null],
+            ['created_at', 'vehicleNo', 'mobileNo', 'simProvider', 'expireDate', 'statusStop', null],
             function (Vehicle $vehicle, int $index) {
                 $statusBadge = '<span class="badge badge-' . ((int) $vehicle->statusStop === 1 ? 'danger' : 'success') . '">'
                     . ((int) $vehicle->statusStop === 1 ? 'Stopped' : 'Active')

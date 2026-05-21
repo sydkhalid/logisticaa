@@ -27,13 +27,13 @@ class EpodController extends BaseController
     {
         $query = Epod::query()
             ->select(['id', 'lspId', 'lrNumber', 'epod', 'status', 'created_at', 'updated_at'])
-            ->latest('id');
+            ->latest('created_at');
 
         return $this->datatableResponse(
             $request,
             $query,
             ['lspId', 'lrNumber'],
-            ['id', 'lspId', 'lrNumber', 'status', 'created_at', null],
+            ['created_at', 'lspId', 'lrNumber', 'status', 'created_at', null],
             function (Epod $epod, int $index) {
                 $uploaded = (int) $epod->status === 1;
                 $fileExists = $this->epodPath($epod) !== null;
@@ -79,7 +79,7 @@ class EpodController extends BaseController
             'pageTitle' => 'Upload EPOD',
             'recentTrackings' => Tracking::query()
                 ->whereIn('status', [1, 3])
-                ->latest('id')
+                ->latest('created_at')
                 ->limit(20)
                 ->get(['lrNumber', 'lspId']),
             'defaultLspId' => $this->defaultLspId(),
@@ -144,7 +144,7 @@ class EpodController extends BaseController
         $tracking = Tracking::query()
             ->where('lspId', $validated['lspId'])
             ->where('lrNumber', $validated['lrNumber'])
-            ->latest('id')
+            ->latest('created_at')
             ->first();
 
         if (!$tracking) {
@@ -384,7 +384,7 @@ class EpodController extends BaseController
         return Tracking::query()
             ->where('lspId', $epod->lspId)
             ->where('lrNumber', $epod->lrNumber)
-            ->latest('id')
+            ->latest('created_at')
             ->first();
     }
 

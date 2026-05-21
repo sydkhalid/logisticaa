@@ -107,7 +107,7 @@
             </div>
             <div class="col-md-2">
               <label for="log-type">Type</label>
-              <select class="form-control" id="log-type" name="type">
+              <select class="form-control" id="log-type" name="type" data-placeholder="All Types">
                 <option value="">All Types</option>
                 @foreach ($types as $type)
                   <option value="{{ $type }}" {{ $filters['type'] === $type ? 'selected' : '' }}>{{ strtoupper($type) }}</option>

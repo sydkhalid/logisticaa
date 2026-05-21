@@ -31,7 +31,7 @@
             </div>
             <div class="form-group">
               <label for="lrStatus">LR Status</label>
-              <select class="form-select" id="lrStatus" name="lrStatus" required>
+              <select class="form-select" id="lrStatus" name="lrStatus" data-placeholder="Please choose" required>
                 @foreach ($lrStatuses as $status)
                   <option value="{{ $status }}" {{ old('lrStatus', $tracking->lrStatus) === $status ? 'selected' : '' }}>{{ $status }}</option>
                 @endforeach

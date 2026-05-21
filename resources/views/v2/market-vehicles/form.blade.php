@@ -37,7 +37,7 @@
               </div>
               <div class="col-md-6 form-group">
                 <label for="simProvider">SIM Provider</label>
-                <select class="form-select" id="simProvider" name="simProvider" required>
+                <select class="form-select" id="simProvider" name="simProvider" data-placeholder="Choose SIM provider" required>
                   @foreach (['AIRTEL', 'VODAFONE', 'JIO', 'IDEA'] as $provider)
                     <option value="{{ $provider }}" {{ old('simProvider', $vehicle->simProvider) === $provider ? 'selected' : '' }}>
                       {{ $provider }}
